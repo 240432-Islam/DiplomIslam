@@ -17,13 +17,26 @@ async function initializeData() {
   const existingEmployees = storageManager.loadLocal('employees');
   if (!existingEmployees || existingEmployees.length === 0) {
     storageManager.saveLocal('employees', employeeData);
-    console.log('Super Admin database initialized with', employeeData.length, 'administrators');
+    console.log('✅ База сотрудников инициализирована:', employeeData.length, 'сотрудников');
   }
 
   // Create default super admin users if not exists
   const users = storageManager.loadLocal('users') || [];
   if (users.length === 0) {
+    console.log('🔄 Создание супер-администраторов...');
     await createDefaultSuperAdmins();
+  } else {
+    console.log('ℹ️ Пользователи уже существуют:', users.length);
+    console.log('');
+    console.log('🔐 УЧЕТНЫЕ ДАННЫЕ ДЛЯ ВХОДА:');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('Username: bekishev.islam');
+    console.log('Password: Admin123!');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('Username: belosanova.amina');
+    console.log('Password: Admin123!');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('');
   }
 }
 

@@ -1010,36 +1010,70 @@ function showRegisterForm() {
 }
 
 async function handleLogin(event) {
-  event.preventDefault(); clearMessages();
+  event.preventDefault(); 
+  clearMessages();
+  
   const username = document.getElementById('login-username').value;
   const password = document.getElementById('login-password').value;
+  
+  // Проверка блокировки аккаунта
   const lockoutInfo = lockoutManager.isAccountLocked(username);
-  if (lockoutInfo.isLocked) { showError('login-error', `Account locked. Try again in ${lockoutInfo.remainingMinutes} minutes.`); auditLogger.logEvent({username,action:'login',details:'Attempt on locked account',status:'error'}); return; }
+  if (lockoutInfo.isLocked) { 
+    showError('login-error', `Аккаунт заблокирован. Попробуйте через ${lockoutInfo.remainingMinutes} минут.`); 
+    auditLogger.logEvent({username, action:'login', details:'Попытка входа в заблокированный аккаунт', status:'error'}); 
+    return; 
+  }
+  
+  // Попытка входа
   const result = await authManager.login(username, password);
+  
   if (result.success) {
-    lockoutManager.resetFailedAttempts(username); sessionManager.createSession(result.user); currentUser = result.user;
-    auditLogger.logEvent({username,action:'login',details:'Successful login',status:'success'}); showDashboard();
+    // Успешный вход
+    lockoutManager.resetFailedAttempts(username); 
+    sessionManager.createSession(result.user); 
+    currentUser = result.user;
+    auditLogger.logEvent({username, action:'login', details:'Успешный вход', status:'success'}); 
+    showDashboard();
   } else {
+    // Неудачный вход
     const ls = lockoutManager.recordFailedAttempt(username);
-    auditLogger.logEvent({username,action:'login',details:`Failed attempt (${ls.failedAttempts}/${ls.maxAttempts})`,status:'error'});
-    if (ls.isLocked) { showError('login-error', `Account locked. Try again in ${ls.remainingMinutes} minutes.`); auditLogger.logEvent({username,action:'account_lockout',details:'Locked after too many attempts',status:'error'}); }
-    else showError('login-error', `${result.error}. Attempt ${ls.failedAttempts} of ${ls.maxAttempts}.`);
+    auditLogger.logEvent({username, action:'login', details:`Неудачная попытка (${ls.failedAttempts}/${ls.maxAttempts})`, status:'error'});
+    
+    if (ls.isLocked) { 
+      showError('login-error', `Аккаунт заблокирован после ${ls.maxAttempts} неудачных попыток. Попробуйте через ${ls.remainingMinutes} минут.`); 
+      auditLogger.logEvent({username, action:'account_lockout', details:'Аккаунт заблокирован после множества попыток', status:'error'}); 
+    } else if (ls.maxAttempts > 0) {
+      showError('login-error', `Неверные учетные данные. Попытка ${ls.failedAttempts} из ${ls.maxAttempts}.`);
+    } else {
+      // Пользователь не существует
+      showError('login-error', 'Неверное имя пользователя или пароль. Проверьте учетные данные.');
+    }
   }
 }
 
 async function handleRegister(event) {
-  event.preventDefault(); clearMessages();
+  event.preventDefault(); 
+  clearMessages();
+  
   const username = document.getElementById('register-username').value;
   const password = document.getElementById('register-password').value;
   const confirmPassword = document.getElementById('register-confirm-password').value;
-  if (password !== confirmPassword) { showError('register-error','Passwords do not match'); return; }
+  
+  if (password !== confirmPassword) { 
+    showError('register-error', 'Пароли не совпадают'); 
+    return; 
+  }
+  
   const result = await authManager.register(username, password);
+  
   if (result.success) {
-    auditLogger.logEvent({username,action:'registration',details:'Registered successfully',status:'success'});
-    showSuccess('register-success','Registration successful! Please login.');
+    auditLogger.logEvent({username, action:'registration', details:'Успешная регистрация', status:'success'});
+    showSuccess('register-success', 'Регистрация успешна! Теперь войдите в систему.');
     document.getElementById('register-form-element').reset();
     setTimeout(showLoginForm, 2000);
-  } else showError('register-error', result.error);
+  } else {
+    showError('register-error', result.error);
+  }
 }
 
 function showDashboard() {
