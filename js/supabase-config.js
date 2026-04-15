@@ -3,9 +3,9 @@
  * Database connection and API setup
  */
 
-// Supabase credentials (replace with your actual credentials)
-const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // e.g., https://xxxxx.supabase.co
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+// Supabase credentials
+const SUPABASE_URL = 'https://rdtlotoficklrhkfvyao.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkdGxvdG9maWNrbHJoa2Z2eWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNDcyMjYsImV4cCI6MjA5MTgyMzIyNn0.W8nFzVjq7chMPKeo5DOx7oiHWjakRl25Qv8PBG5Nx2M';
 
 // Initialize Supabase client
 let supabaseClient = null;
