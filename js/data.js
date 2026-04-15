@@ -28,21 +28,56 @@ async function initializeData() {
 }
 
 /**
- * Create default super admin users
+ * Create default super admin users with password Admin123!
  */
 async function createDefaultSuperAdmins() {
-  // Note: Users need to register themselves with their chosen passwords
-  // This just ensures the employee records exist
-  console.log('Super Admin employees ready for registration');
-  console.log('Available usernames: bekishev.islam, belosanova.amina');
+  const users = storageManager.loadLocal('users') || [];
   
-  // Log system initialization
-  auditLogger.logEvent({
-    username: 'system',
-    action: 'system_init',
-    details: 'System initialized with super admin employees',
-    status: 'success'
-  });
+  // Создаём обоих супер-админов с паролем Admin123!
+  const superAdmins = [
+    { username: 'bekishev.islam', password: 'Admin123!' },
+    { username: 'belosanova.amina', password: 'Admin123!' }
+  ];
+  
+  for (const admin of superAdmins) {
+    // Проверяем, не зарегистрирован ли уже
+    const exists = users.some(u => u.username === admin.username);
+    if (!exists) {
+      const result = await authManager.register(admin.username, admin.password);
+      if (result.success) {
+        console.log(`✅ Супер-админ ${admin.username} создан с паролем: Admin123!`);
+        
+        // Обновляем роль на superadmin
+        const updatedUsers = storageManager.loadLocal('users') || [];
+        const user = updatedUsers.find(u => u.username === admin.username);
+        if (user) {
+          user.role = 'superadmin';
+          storageManager.saveLocal('users', updatedUsers);
+        }
+        
+        // Логируем создание
+        auditLogger.logEvent({
+          username: 'system',
+          action: 'registration',
+          details: `Супер-админ ${admin.username} создан автоматически`,
+          status: 'success'
+        });
+      }
+    } else {
+      console.log(`ℹ️ Супер-админ ${admin.username} уже существует`);
+    }
+  }
+  
+  console.log('');
+  console.log('🔐 УЧЕТНЫЕ ДАННЫЕ ДЛЯ ВХОДА:');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('Username: bekishev.islam');
+  console.log('Password: Admin123!');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('Username: belosanova.amina');
+  console.log('Password: Admin123!');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('');
 }
 
 // Initialize data when script loads
