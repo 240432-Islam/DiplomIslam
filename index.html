@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TURAN - Password & Authentication Policy System</title>
+<style>
+/* Reset and Base Styles */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; line-height: 1.6; color: #333; background: #f5f5f5; }
+
+/* Authentication Page */
+.auth-container { 
+  min-height: 100vh; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  background: url('media/Fon.png') center/cover no-repeat, linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px; 
+  position: relative;
+}
+.auth-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1;
+}
+.auth-container > * {
+  position: relative;
+  z-index: 2;
+}
+.auth-box { 
+  background: rgba(255, 255, 255, 0.95); 
+  backdrop-filter: blur(10px);
+  border-radius: 20px; 
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1); 
+  width: 100%; 
+  max-width: 480px; 
+  padding: 50px 40px;
+  animation: slideUp 0.5s ease-out;
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.auth-header { text-align: center; margin-bottom: 35px; }
+.auth-logo { 
+  width: 120px; 
+  height: auto; 
+  margin: 0 auto 20px; 
+  display: block;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+}
+.auth-header h1 { 
+  font-size: 2.8rem; 
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 10px; 
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+.auth-header p { color: #555; font-size: 0.95rem; font-weight: 500; }
+.auth-tabs { display: flex; gap: 10px; margin-bottom: 30px; }
+.tab-button { 
+  flex: 1; 
+  padding: 14px; 
+  border: 2px solid transparent; 
+  background: #f5f5f5; 
+  cursor: pointer; 
+  border-radius: 10px; 
+  font-size: 1.05rem; 
+  transition: all 0.3s ease;
+  font-weight: 600;
+  color: #666;
+}
+.tab-button.active { 
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+  color: white; 
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  transform: translateY(-2px);
+}
+.tab-button:hover:not(.active) { 
+  background: #e8e8e8; 
+  border-color: #667eea;
+  transform: translateY(-1px);
+}
+
+/* Forms */
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; margin-bottom: 5px; font-weight: 500; color: #333; }
+.form-group input[type="text"], .form-group input[type="password"], .form-group input[type="number"] { 
+  width: 100%; 
+  padding: 14px 16px; 
+  border: 2px solid #e0e0e0; 
+  border-radius: 10px; 
+  font-size: 1rem; 
+  transition: all 0.3s ease;
+  background: #fafafa;
+}
+.form-group input:focus { 
+  outline: none; 
+  border-color: #667eea; 
+  background: white;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  transform: translateY(-1px);
+}
+.form-group input[type="checkbox"] { margin-right: 8px; }
+
+/* Buttons */
+.btn { padding: 12px 24px; border: none; border-radius: 5px; font-size: 1rem; cursor: pointer; transition: all 0.3s; font-weight: 500; }
+.btn-primary { 
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+  color: white; 
+  width: 100%;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: left 0.5s;
+}
+.btn-primary:hover::before {
+  left: 100%;
+}
+.btn-primary:hover { 
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+.btn-primary:active {
+  transform: translateY(0);
+}
+.btn-primary:disabled { 
+  background: #ccc; 
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+.btn-secondary { 
+  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%); 
+  color: white; 
+  width: 100%;
+  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+  transition: all 0.3s ease;
+}
+.btn-secondary:hover { 
+  background: linear-gradient(135deg, #5a6268 0%, #495057 100%); 
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(108, 117, 125, 0.4);
+}
+.btn-sm { 
+  padding: 8px 16px; 
+  font-size: 0.9rem; 
+  margin-top: 8px; 
+  width: auto;
+  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+  color: white;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(108, 117, 125, 0.2);
+}
+.btn-sm:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+}
+
+/* Password Requirements */
+.password-requirements { 
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); 
+  padding: 18px; 
+  border-radius: 12px; 
+  margin-bottom: 20px;
+  border: 2px solid #e0e0e0;
+}
+.password-requirements p { 
+  font-weight: 600; 
+  color: #333; 
+  margin-bottom: 12px;
+}
+.password-requirements ul { margin: 10px 0; padding-left: 20px; }
+.password-requirements li { margin: 6px 0; color: #555; font-size: 0.95rem; }
+.requirements-indicators { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.indicator { 
+  padding: 6px 14px; 
+  border-radius: 20px; 
+  font-size: 0.85rem; 
+  background: #e9ecef; 
+  color: #666;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+.indicator.valid { 
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%); 
+  color: white;
+  border-color: #28a745;
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+.indicator.invalid { 
+  background: #f8d7da; 
+  color: #721c24;
+  border-color: #f5c6cb;
+}
+
+/* Messages */
+.error-message, .success-message { 
+  padding: 14px 16px; 
+  border-radius: 10px; 
+  margin-bottom: 18px; 
+  display: none;
+  font-weight: 500;
+  animation: slideIn 0.3s ease-out;
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.error-message { 
+  background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%); 
+  color: #721c24; 
+  border: 2px solid #f5c6cb;
+  border-left: 4px solid #dc3545;
+}
+.success-message { 
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); 
+  color: #155724; 
+  border: 2px solid #c3e6cb;
+  border-left: 4px solid #28a745;
+}
+
+/* Main Application Layout */
+.main-container { display: flex; min-height: 100vh; }
+
+/* Sidebar */
+.sidebar { 
+  width: 280px; 
+  background: linear-gradient(180deg, #2c3e50 0%, #1a252f 100%); 
+  color: white; 
+  display: flex; 
+  flex-direction: column;
+  box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+}
+.sidebar-header { 
+  padding: 25px; 
+  background: linear-gradient(135deg, #1a252f 0%, #0d1419 100%); 
+  text-align: center;
+  border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+}
+.sidebar-header h2 { 
+  font-size: 1.8rem; 
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+  letter-spacing: 3px;
+}
+.user-info { 
+  padding: 25px 20px; 
+  border-bottom: 1px solid rgba(52, 73, 94, 0.5); 
+  display: flex; 
+  align-items: center; 
+  gap: 15px;
+  background: rgba(0,0,0,0.1);
+}
+.user-avatar { 
+  width: 55px; 
+  height: 55px; 
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+  border-radius: 50%; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  font-size: 1.6rem;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  border: 3px solid rgba(255,255,255,0.1);
+}
+.user-details { flex: 1; }
+.user-name { font-weight: 600; margin-bottom: 5px; }
+.user-role { font-size: 0.875rem; color: #95a5a6; }
+.sidebar-menu { flex: 1; padding: 20px 0; }
+.menu-item { 
+  display: block; 
+  padding: 14px 20px; 
+  color: #ecf0f1; 
+  text-decoration: none; 
+  transition: all 0.3s ease; 
+  cursor: pointer;
+  border-left: 4px solid transparent;
+  font-weight: 500;
+  position: relative;
+}
+.menu-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background: linear-gradient(90deg, rgba(102, 126, 234, 0.3), transparent);
+  transition: width 0.3s ease;
+}
+.menu-item:hover::before {
+  width: 100%;
+}
+.menu-item:hover { 
+  background: rgba(52, 73, 94, 0.5); 
+  padding-left: 30px;
+  color: white;
+}
+.menu-item.active { 
+  background: linear-gradient(90deg, rgba(102, 126, 234, 0.2), transparent); 
+  border-left: 4px solid #667eea;
+  color: white;
+  font-weight: 600;
+}
+.sidebar-footer { padding: 20px; border-top: 1px solid #34495e; }
+
+/* Main Content */
+.main-content { 
+  flex: 1; 
+  padding: 35px; 
+  overflow-y: auto;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+}
+.main-content h1 { 
+  font-size: 2.2rem; 
+  margin-bottom: 30px; 
+  color: #2c3e50;
+  font-weight: 700;
+  position: relative;
+  padding-bottom: 15px;
+}
+.main-content h1::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 80px;
+  height: 4px;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  border-radius: 2px;
+}
+.main-content h2 { 
+  font-size: 1.6rem; 
+  margin-bottom: 20px; 
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+/* Stats Grid */
+.stats-grid { 
+  display: grid; 
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+  gap: 25px; 
+  margin-bottom: 35px; 
+}
+.stat-card { 
+  background: white; 
+  padding: 25px; 
+  border-radius: 16px; 
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  transition: all 0.3s ease;
+  border: 1px solid rgba(0,0,0,0.05);
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+}
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 30px rgba(102, 126, 234, 0.2);
+}
+.stat-label { 
+  font-size: 0.9rem; 
+  color: #666; 
+  margin-bottom: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.stat-value { 
+  font-size: 2.5rem; 
+  font-weight: 700; 
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Section */
+.section { 
+  background: white; 
+  padding: 30px; 
+  border-radius: 16px; 
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
+  margin-bottom: 30px;
+  border: 1px solid rgba(0,0,0,0.05);
+  transition: all 0.3s ease;
+}
+.section:hover {
+  box-shadow: 0 6px 30px rgba(0,0,0,0.12);
+}
+
+/* Tables */
+.data-table { width: 100%; border-collapse: collapse; background: white; }
+.data-table thead { background: #f8f9fa; }
+.data-table th { padding: 12px; text-align: left; font-weight: 600; color: #2c3e50; border-bottom: 2px solid #dee2e6; }
+.data-table td { padding: 12px; border-bottom: 1px solid #dee2e6; }
+.data-table tr:hover { background: #f8f9fa; }
+
+/* Badges */
+.badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.875rem; font-weight: 500; }
+.badge-success { background: #d4edda; color: #155724; }
+.badge-error { background: #f8d7da; color: #721c24; }
+.badge-warning { background: #fff3cd; color: #856404; }
+
+/* Profile Info */
+.profile-info { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
+.info-group { display: flex; padding: 15px 0; border-bottom: 1px solid #dee2e6; }
+.info-group:last-child { border-bottom: none; }
+.info-group label { font-weight: 600; width: 200px; color: #2c3e50; }
+.info-group span { flex: 1; color: #666; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .main-container { flex-direction: column; }
+  .sidebar { width: 100%; }
+  .sidebar-menu { display: flex; flex-wrap: wrap; padding: 10px; }
+  .menu-item { flex: 1 1 auto; text-align: center; padding: 10px; }
+  .menu-item:hover { padding-left: 10px; }
+  .stats-grid { grid-template-columns: 1fr; }
+  .data-table { font-size: 0.875rem; }
+  .data-table th, .data-table td { padding: 8px; }
+  .info-group { flex-direction: column; }
+  .info-group label { width: 100%; margin-bottom: 5px; }
+}
+@media (max-width: 480px) {
+  .auth-box { padding: 20px; }
+  .auth-header h1 { font-size: 2rem; }
+  .main-content { padding: 15px; }
+  .main-content h1 { font-size: 1.5rem; }
+  .btn { padding: 10px 20px; }
+}
+:focus { outline: 2px solid #667eea; outline-offset: 2px; }
+</style>
+</head>
+<body>
+    <!-- Authentication Page -->
+    <div id="auth-page" class="auth-container">
+        <div class="auth-box">
+            <div class="auth-header">
+                <img src="media/logo.png" alt="TURAN Logo" class="auth-logo">
+                <h1>TURAN</h1>
+                <p>Password & Authentication Policy Management System</p>
+            </div>
+            <div class="auth-tabs">
+                <button id="login-tab" class="tab-button active" onclick="showLoginForm()">Login</button>
+                <button id="register-tab" class="tab-button" onclick="showRegisterForm()">Register</button>
+            </div>
+            <!-- Login Form -->
+            <div id="login-form" class="auth-form">
+                <form id="login-form-element" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label for="login-username">Username</label>
+                        <input type="text" id="login-username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <input type="password" id="login-password" required>
+                    </div>
+                    <div id="login-error" class="error-message"></div>
+                    <div style="margin-bottom:15px;padding:14px;background:linear-gradient(135deg, #e8f4fd 0%, #f0e8fd 100%);border-radius:10px;font-size:0.9rem;color:#31708f;border-left:4px solid #667eea;">
+                        <strong>🔐 Для входа:</strong><br>
+                        Зарегистрируйтесь используя:<br>
+                        <code style="background:rgba(255,255,255,0.7);padding:2px 8px;border-radius:4px;font-family:monospace;">bekishev.islam</code> или 
+                        <code style="background:rgba(255,255,255,0.7);padding:2px 8px;border-radius:4px;font-family:monospace;">belosanova.amina</code>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Login</button>
+                </form>
+            </div>
+            <!-- Registration Form -->
+            <div id="register-form" class="auth-form" style="display: none;">
+                <form id="register-form-element" onsubmit="handleRegister(event)">
+                    <div class="form-group">
+                        <label for="register-username">Username (из базы сотрудников)</label>
+                        <input type="text" id="register-username" required placeholder="напр. aibek.k">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">Password</label>
+                        <input type="password" id="register-password" required oninput="validatePasswordRealtime()">
+                        <button type="button" class="btn btn-sm" style="margin-top:6px" onclick="generatePassword()">⚡ Generate</button>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-confirm-password">Confirm Password</label>
+                        <input type="password" id="register-confirm-password" required>
+                    </div>
+                    <div class="password-requirements">
+                        <p><strong>Password Requirements:</strong></p>
+                        <ul id="password-requirements"></ul>
+                        <div class="requirements-indicators">
+                            <span id="req-length" class="indicator">Length</span>
+                            <span id="req-uppercase" class="indicator">Uppercase</span>
+                            <span id="req-lowercase" class="indicator">Lowercase</span>
+                            <span id="req-numbers" class="indicator">Numbers</span>
+                            <span id="req-special" class="indicator">Special</span>
+                        </div>
+                    </div>
+                    <div id="register-error" class="error-message"></div>
+                    <div id="register-success" class="success-message"></div>
+                    <button type="submit" id="register-submit" class="btn btn-primary">Register</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="main-app" class="main-container" style="display: none;">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>TURAN</h2></div>
+            <div class="user-info">
+                <div class="user-avatar">👤</div>
+                <div class="user-details">
+                    <div id="user-name" class="user-name">User Name</div>
+                    <div id="user-role" class="user-role">Role</div>
+                </div>
+            </div>
+            <nav class="sidebar-menu">
+                <a class="menu-item" data-view="dashboard" onclick="navigateTo('dashboard')">📊 Dashboard</a>
+                <a class="menu-item" data-view="profile" onclick="navigateTo('profile')">👤 Profile</a>
+                <a class="menu-item admin-only" data-feature="policy-config" data-view="policy-config" onclick="navigateTo('policy-config')">🔐 Policy Configuration</a>
+                <a class="menu-item admin-only" data-feature="user-management" data-view="user-management" onclick="navigateTo('user-management')">👥 User Management</a>
+                <a class="menu-item admin-only" data-feature="employee-database" data-view="employee-database" onclick="navigateTo('employee-database')">📋 Employee Database</a>
+                <a class="menu-item admin-only" data-feature="audit-logs" data-view="audit-logs" onclick="navigateTo('audit-logs')">📝 Audit Logs</a>
+            </nav>
+            <div class="sidebar-footer">
+                <button class="btn btn-secondary" onclick="handleLogout()">Logout</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <!-- Dashboard -->
+            <div id="dashboard-view" class="view">
+                <h1>Dashboard</h1>
+                <div class="stats-grid">
+                    <div class="stat-card"><div class="stat-label">Total Employees</div><div id="stat-total-employees" class="stat-value">0</div></div>
+                    <div class="stat-card"><div class="stat-label">Registered Users</div><div id="stat-registered-users" class="stat-value">0</div></div>
+                    <div class="stat-card"><div class="stat-label">Unregistered</div><div id="stat-unregistered" class="stat-value">0</div></div>
+                    <div class="stat-card"><div class="stat-label">Locked Accounts</div><div id="stat-locked-users" class="stat-value">0</div></div>
+                    <div class="stat-card"><div class="stat-label">Failed Logins</div><div id="stat-failed-logins" class="stat-value">0</div></div>
+                    <div class="stat-card"><div class="stat-label">Max Attempts</div><div id="stat-max-attempts" class="stat-value">0</div></div>
+                </div>
+                <div class="section">
+                    <h2>Recent Activity</h2>
+                    <table class="data-table">
+                        <thead><tr><th>Time</th><th>Username</th><th>Action</th><th>Status</th></tr></thead>
+                        <tbody id="recent-activity-table"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Profile -->
+            <div id="profile-view" class="view" style="display:none;">
+                <h1>User Profile</h1>
+                <div class="profile-info">
+                    <div class="info-group"><label>Username:</label><span id="profile-username"></span></div>
+                    <div class="info-group"><label>Full Name:</label><span id="profile-fullname"></span></div>
+                    <div class="info-group"><label>Department:</label><span id="profile-department"></span></div>
+                    <div class="info-group"><label>Position:</label><span id="profile-position"></span></div>
+                    <div class="info-group"><label>Role:</label><span id="profile-role"></span></div>
+                    <div class="info-group"><label>Registered:</label><span id="profile-registered"></span></div>
+                    <div class="info-group"><label>Last Login:</label><span id="profile-last-login"></span></div>
+                </div>
+                <div class="section">
+                    <h2>Change Password</h2>
+                    <form id="password-change-form" onsubmit="handlePasswordChange(event)">
+                        <div class="form-group"><label for="old-password">Current Password</label><input type="password" id="old-password" required></div>
+                        <div class="form-group"><label for="new-password">New Password</label><input type="password" id="new-password" required></div>
+                        <div class="form-group"><label for="confirm-new-password">Confirm New Password</label><input type="password" id="confirm-new-password" required></div>
+                        <div id="password-change-error" class="error-message"></div>
+                        <div id="password-change-success" class="success-message"></div>
+                        <button type="submit" class="btn btn-primary">Change Password</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Policy Configuration -->
+            <div id="policy-config-view" class="view" style="display:none;">
+                <h1>Password Policy Configuration</h1>
+                <div class="section">
+                <form id="policy-form" onsubmit="handlePolicyUpdate(event)">
+                    <div class="form-group"><label for="policy-min-length">Minimum Password Length (4-32)</label><input type="number" id="policy-min-length" min="4" max="32" required></div>
+                    <div class="form-group"><label><input type="checkbox" id="policy-uppercase"> Require Uppercase Letters</label></div>
+                    <div class="form-group"><label><input type="checkbox" id="policy-lowercase"> Require Lowercase Letters</label></div>
+                    <div class="form-group"><label><input type="checkbox" id="policy-numbers"> Require Numbers</label></div>
+                    <div class="form-group"><label><input type="checkbox" id="policy-special"> Require Special Characters</label></div>
+                    <div class="form-group"><label for="policy-max-attempts">Maximum Failed Attempts (1-10)</label><input type="number" id="policy-max-attempts" min="1" max="10" required></div>
+                    <div class="form-group"><label for="policy-lockout-duration">Lockout Duration (minutes, 1-1440)</label><input type="number" id="policy-lockout-duration" min="1" max="1440" required></div>
+                    <div id="policy-error" class="error-message"></div>
+                    <div id="policy-success" class="success-message"></div>
+                    <button type="submit" class="btn btn-primary">Update Policy</button>
+                </form>
+                </div>
+            </div>
+
+            <!-- User Management -->
+            <div id="user-management-view" class="view" style="display:none;">
+                <h1>User Management</h1>
+                <div class="section">
+                <table class="data-table">
+                    <thead><tr><th>Username</th><th>Full Name</th><th>Department</th><th>Role</th><th>Failed</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody id="users-table"></tbody>
+                </table>
+                </div>
+            </div>
+
+            <!-- Employee Database -->
+            <div id="employee-database-view" class="view" style="display:none;">
+                <h1>Employee Database</h1>
+                <div class="section">
+                <table class="data-table">
+                    <thead><tr><th>Username</th><th>Full Name</th><th>Department</th><th>Position</th><th>Status</th></tr></thead>
+                    <tbody id="employees-table"></tbody>
+                </table>
+                </div>
+            </div>
+
+            <!-- Audit Logs -->
+            <div id="audit-logs-view" class="view" style="display:none;">
+                <h1>Audit Logs</h1>
+                <div class="section">
+                    <h2>Statistics</h2>
+                    <table class="data-table">
+                        <thead><tr><th>Action</th><th>Total</th><th>Successful</th><th>Failed</th></tr></thead>
+                        <tbody id="audit-stats-table"></tbody>
+                    </table>
+                </div>
+                <div class="section">
+                    <h2>Log Entries</h2>
+                    <table class="data-table">
+                        <thead><tr><th>Timestamp</th><th>Username</th><th>Action</th><th>Details</th><th>IP</th><th>Status</th></tr></thead>
+                        <tbody id="audit-logs-table"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+<script>
+// ═══════════════ STORAGE MANAGER ═══════════════
+class StorageManager {
+  constructor() { this.initializeStorage(); }
+  initializeStorage() {
+    if (!this.loadLocal('users')) this.saveLocal('users', []);
+    if (!this.loadLocal('employees')) this.saveLocal('employees', []);
+    if (!this.loadLocal('policies')) this.saveLocal('policies', []);
+    if (!this.loadLocal('auditLogs')) this.saveLocal('auditLogs', []);
+  }
+  saveLocal(key, data) { try { localStorage.setItem(key, JSON.stringify(data)); return true; } catch(e) { return false; } }
+  loadLocal(key) { try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : null; } catch(e) { return null; } }
+  saveSession(key, data) { try { sessionStorage.setItem(key, JSON.stringify(data)); return true; } catch(e) { return false; } }
+  loadSession(key) { try { const s = sessionStorage.getItem(key); return s ? JSON.parse(s) : null; } catch(e) { return null; } }
+  removeLocal(key) { try { localStorage.removeItem(key); } catch(e) {} }
+  removeSession(key) { try { sessionStorage.removeItem(key); } catch(e) {} }
+}
+const storageManager = new StorageManager();
+
+// ═══════════════ POLICY ENGINE ═══════════════
+class PolicyEngine {
+  constructor(storage) { this.storage = storage; this.initializeDefaultPolicy(); }
+  initializeDefaultPolicy() {
+    const policies = this.storage.loadLocal('policies') || [];
+    if (policies.length === 0) {
+      policies.push({ id:1, name:'Default Policy', minLength:8, requireUppercase:true, requireLowercase:true, requireNumbers:true, requireSpecial:true, maxFailedAttempts:3, lockoutDurationMinutes:15, passwordExpiryDays:90, passwordHistoryCount:5, isActive:true, createdAt:new Date().toISOString(), createdBy:'system' });
+      this.storage.saveLocal('policies', policies);
+    }
+  }
+  getCurrentPolicy() { const p = this.storage.loadLocal('policies') || []; return p.find(x => x.isActive) || p[0]; }
+  validatePassword(password) {
+    const policy = this.getCurrentPolicy();
+    const errors = [];
+    const requirements = { length:false, uppercase:false, lowercase:false, numbers:false, special:false };
+    if (password.length >= policy.minLength) { requirements.length = true; } else { errors.push(`At least ${policy.minLength} characters`); }
+    if (policy.requireUppercase) { if (/[A-Z]/.test(password)) requirements.uppercase = true; else errors.push('One uppercase letter'); } else requirements.uppercase = true;
+    if (policy.requireLowercase) { if (/[a-z]/.test(password)) requirements.lowercase = true; else errors.push('One lowercase letter'); } else requirements.lowercase = true;
+    if (policy.requireNumbers) { if (/[0-9]/.test(password)) requirements.numbers = true; else errors.push('One number'); } else requirements.numbers = true;
+    if (policy.requireSpecial) { if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) requirements.special = true; else errors.push('One special character'); } else requirements.special = true;
+    return { valid: errors.length === 0, errors, requirements };
+  }
+  updatePolicy(policyData) {
+    const v = this.validatePolicySettings(policyData);
+    if (!v.valid) return { success:false, error:v.errors.join(', ') };
+    const policies = this.storage.loadLocal('policies') || [];
+    policies.forEach(p => p.isActive = false);
+    const newPolicy = { id:policies.length+1, name:policyData.name||`Policy ${policies.length+1}`, minLength:policyData.minLength, requireUppercase:policyData.requireUppercase, requireLowercase:policyData.requireLowercase, requireNumbers:policyData.requireNumbers, requireSpecial:policyData.requireSpecial, maxFailedAttempts:policyData.maxFailedAttempts, lockoutDurationMinutes:policyData.lockoutDurationMinutes, passwordExpiryDays:policyData.passwordExpiryDays||90, passwordHistoryCount:policyData.passwordHistoryCount||5, isActive:true, createdAt:new Date().toISOString(), createdBy:policyData.createdBy||'admin' };
+    policies.push(newPolicy);
+    this.storage.saveLocal('policies', policies);
+    return { success:true, policy:newPolicy };
+  }
+  validatePolicySettings(d) {
+    const errors = [];
+    if (d.minLength < 4 || d.minLength > 32) errors.push('Min length must be 4–32');
+    if (d.maxFailedAttempts < 1 || d.maxFailedAttempts > 10) errors.push('Max attempts must be 1–10');
+    if (d.lockoutDurationMinutes < 1 || d.lockoutDurationMinutes > 1440) errors.push('Lockout duration must be 1–1440 min');
+    return { valid:errors.length===0, errors };
+  }
+  generatePassword() {
+    const policy = this.getCurrentPolicy();
+    const length = Math.max(policy.minLength, 12);
+    const upper='ABCDEFGHIJKLMNOPQRSTUVWXYZ', lower='abcdefghijklmnopqrstuvwxyz', nums='0123456789', spec='!@#$%^&*()_+-=[];\'"|,.<>/?';
+    let charset='', pw='';
+    if (policy.requireUppercase) { charset+=upper; pw+=this.rc(upper); }
+    if (policy.requireLowercase) { charset+=lower; pw+=this.rc(lower); }
+    if (policy.requireNumbers) { charset+=nums; pw+=this.rc(nums); }
+    if (policy.requireSpecial) { charset+=spec; pw+=this.rc(spec); }
+    for (let i=pw.length;i<length;i++) pw+=this.rc(charset);
+    return this.shuffle(pw);
+  }
+  rc(str) { const a=new Uint32Array(1); crypto.getRandomValues(a); return str[a[0]%str.length]; }
+  shuffle(str) { const a=str.split(''); for(let i=a.length-1;i>0;i--){ const r=new Uint32Array(1); crypto.getRandomValues(r); const j=r[0]%(i+1); [a[i],a[j]]=[a[j],a[i]]; } return a.join(''); }
+  isPasswordInHistory(username, hash) { const users=this.storage.loadLocal('users')||[]; const u=users.find(x=>x.username===username); return u&&u.passwordHistory?u.passwordHistory.includes(hash):false; }
+}
+const policyEngine = new PolicyEngine(storageManager);
+
+// ═══════════════ AUTH MANAGER ═══════════════
+class AuthManager {
+  constructor(storage, policyEngine) { this.storage=storage; this.policyEngine=policyEngine; }
+  async hashPassword(password, salt) {
+    const enc=new TextEncoder(); const data=enc.encode(password+salt);
+    const buf=await crypto.subtle.digest('SHA-256',data);
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+  generateSalt() { const a=new Uint8Array(16); crypto.getRandomValues(a); return Array.from(a,b=>b.toString(16).padStart(2,'0')).join(''); }
+  isEmployeeExists(u) { return (this.storage.loadLocal('employees')||[]).some(e=>e.username===u); }
+  isUserRegistered(u) { return (this.storage.loadLocal('users')||[]).some(x=>x.username===u); }
+  getEmployee(u) { return (this.storage.loadLocal('employees')||[]).find(e=>e.username===u)||null; }
+  async register(username, password) {
+    if (!this.isEmployeeExists(username)) return { success:false, error:'Username not found in employee database', user:null };
+    if (this.isUserRegistered(username)) return { success:false, error:'User already registered', user:null };
+    const validation=this.policyEngine.validatePassword(password);
+    if (!validation.valid) return { success:false, error:validation.errors.join(', '), user:null };
+    const salt=this.generateSalt(); const passwordHash=await this.hashPassword(password,salt);
+    const users=this.storage.loadLocal('users')||[];
+    
+    // Determine role - super admins get superadmin role
+    const isSuperAdmin = (username === 'bekishev.islam' || username === 'belosanova.amina');
+    const userRole = isSuperAdmin ? 'superadmin' : 'user';
+    
+    const newUser={ id:users.length+1, username, passwordHash, salt, role:userRole, isActive:true, failedAttempts:0, lockedUntil:null, registeredAt:new Date().toISOString(), lastLogin:null, passwordHistory:[passwordHash], mfaEnabled:false };
+    users.push(newUser); this.storage.saveLocal('users',users);
+    return { success:true, error:null, user:newUser };
+  }
+  async login(username, password) {
+    const users=this.storage.loadLocal('users')||[];
+    const user=users.find(u=>u.username===username);
+    if (!user) return { success:false, error:'Invalid credentials', user:null };
+    const passwordHash=await this.hashPassword(password,user.salt);
+    if (passwordHash!==user.passwordHash) return { success:false, error:'Invalid credentials', user };
+    user.lastLogin=new Date().toISOString(); this.storage.saveLocal('users',users);
+    return { success:true, error:null, user };
+  }
+  async changePassword(username, oldPassword, newPassword) {
+    const users=this.storage.loadLocal('users')||[];
+    const user=users.find(u=>u.username===username);
+    if (!user) return { success:false, error:'User not found' };
+    const oldHash=await this.hashPassword(oldPassword,user.salt);
+    if (oldHash!==user.passwordHash) return { success:false, error:'Current password is incorrect' };
+    const validation=this.policyEngine.validatePassword(newPassword);
+    if (!validation.valid) return { success:false, error:validation.errors.join(', ') };
+    const newSalt=this.generateSalt(); const newHash=await this.hashPassword(newPassword,newSalt);
+    if (this.policyEngine.isPasswordInHistory(username,newHash)) return { success:false, error:'Password has been used recently' };
+    user.passwordHash=newHash; user.salt=newSalt;
+    if (!user.passwordHistory) user.passwordHistory=[];
+    user.passwordHistory.push(newHash);
+    const policy=this.policyEngine.getCurrentPolicy();
+    if (user.passwordHistory.length>policy.passwordHistoryCount) user.passwordHistory=user.passwordHistory.slice(-policy.passwordHistoryCount);
+    this.storage.saveLocal('users',users); return { success:true, error:null };
+  }
+  async resetPassword(userId, newPassword) {
+    const users=this.storage.loadLocal('users')||[];
+    const user=users.find(u=>u.id===userId);
+    if (!user) return { success:false, error:'User not found' };
+    const validation=this.policyEngine.validatePassword(newPassword);
+    if (!validation.valid) return { success:false, error:validation.errors.join(', ') };
+    const newSalt=this.generateSalt(); const newHash=await this.hashPassword(newPassword,newSalt);
+    user.passwordHash=newHash; user.salt=newSalt;
+    if (!user.passwordHistory) user.passwordHistory=[];
+    user.passwordHistory.push(newHash);
+    const policy=this.policyEngine.getCurrentPolicy();
+    if (user.passwordHistory.length>policy.passwordHistoryCount) user.passwordHistory=user.passwordHistory.slice(-policy.passwordHistoryCount);
+    this.storage.saveLocal('users',users); return { success:true, error:null };
+  }
+  getUser(username) { return (this.storage.loadLocal('users')||[]).find(u=>u.username===username)||null; }
+  getUserById(id) { return (this.storage.loadLocal('users')||[]).find(u=>u.id===id)||null; }
+  getAllUsers() { return this.storage.loadLocal('users')||[]; }
+}
+const authManager = new AuthManager(storageManager, policyEngine);
+
+// ═══════════════ LOCKOUT MANAGER ═══════════════
+class LockoutManager {
+  constructor(storage, policyEngine) { this.storage=storage; this.policyEngine=policyEngine; }
+  recordFailedAttempt(username) {
+    const users=this.storage.loadLocal('users')||[];
+    const user=users.find(u=>u.username===username);
+    if (!user) return { isLocked:false, failedAttempts:0, maxAttempts:0 };
+    const policy=this.policyEngine.getCurrentPolicy();
+    user.failedAttempts=(user.failedAttempts||0)+1;
+    if (user.failedAttempts>=policy.maxFailedAttempts) user.lockedUntil=new Date(Date.now()+policy.lockoutDurationMinutes*60000).toISOString();
+    this.storage.saveLocal('users',users);
+    return { isLocked:user.lockedUntil!==null, failedAttempts:user.failedAttempts, maxAttempts:policy.maxFailedAttempts, lockedUntil:user.lockedUntil };
+  }
+  resetFailedAttempts(username) {
+    const users=this.storage.loadLocal('users')||[];
+    const user=users.find(u=>u.username===username);
+    if (user) { user.failedAttempts=0; user.lockedUntil=null; this.storage.saveLocal('users',users); }
+  }
+  isAccountLocked(username) {
+    const users=this.storage.loadLocal('users')||[];
+    const user=users.find(u=>u.username===username);
+    if (!user) return { isLocked:false, failedAttempts:0, maxAttempts:0, lockedUntil:null, remainingMinutes:0 };
+    if (user.lockedUntil) {
+      const lockoutTime=new Date(user.lockedUntil).getTime();
+      if (Date.now()>=lockoutTime) { this.resetFailedAttempts(username); return { isLocked:false, failedAttempts:0, maxAttempts:this.policyEngine.getCurrentPolicy().maxFailedAttempts, lockedUntil:null, remainingMinutes:0 }; }
+      return { isLocked:true, failedAttempts:user.failedAttempts, maxAttempts:this.policyEngine.getCurrentPolicy().maxFailedAttempts, lockedUntil:user.lockedUntil, remainingMinutes:Math.ceil((lockoutTime-Date.now())/60000) };
+    }
+    return { isLocked:false, failedAttempts:user.failedAttempts||0, maxAttempts:this.policyEngine.getCurrentPolicy().maxFailedAttempts, lockedUntil:null, remainingMinutes:0 };
+  }
+  unlockAccount(userId) {
+    const users=this.storage.loadLocal('users')||[];
+    const user=users.find(u=>u.id===userId);
+    if (!user) return { success:false, error:'User not found' };
+    user.failedAttempts=0; user.lockedUntil=null; this.storage.saveLocal('users',users);
+    return { success:true, error:null };
+  }
+}
+const lockoutManager = new LockoutManager(storageManager, policyEngine);
+
+// ═══════════════ RBAC MANAGER ═══════════════
+class RBACManager {
+  constructor() {
+    this.rolePermissions = {
+      admin: ['dashboard','profile','change-password','policy-config','user-management','employee-database','audit-logs'],
+      operator: ['dashboard','profile','change-password'],
+      user: ['profile','change-password']
+    };
+  }
+  hasPermission(role, feature) { return (this.rolePermissions[role]||[]).includes(feature); }
+  assignRole(userId, role, storage) {
+    if (!['admin','operator','user'].includes(role)) return { success:false, error:'Invalid role' };
+    const users=storage.loadLocal('users')||[]; const user=users.find(u=>u.id===userId);
+    if (!user) return { success:false, error:'User not found' };
+    user.role=role; storage.saveLocal('users',users); return { success:true, error:null };
+  }
+  getRoleDisplayName(role) { return {admin:'Administrator',operator:'Operator',user:'User'}[role]||role; }
+  isAdmin(role) { return role==='admin'; }
+}
+const rbacManager = new RBACManager();
+
+// ═══════════════ AUDIT LOGGER ═══════════════
+class AuditLogger {
+  constructor(storage) { this.storage=storage; }
+  logEvent(event) {
+    const logs=this.storage.loadLocal('auditLogs')||[];
+    logs.push({ id:logs.length+1, timestamp:new Date().toISOString(), username:event.username||'unknown', action:event.action, details:event.details||'', status:event.status, ip:'192.168.1.'+Math.floor(Math.random()*255), userAgent:navigator.userAgent });
+    this.storage.saveLocal('auditLogs',logs);
+  }
+  getAuditLogs(filter={}) {
+    let logs=this.storage.loadLocal('auditLogs')||[];
+    if (filter.username) logs=logs.filter(l=>l.username===filter.username);
+    if (filter.action) logs=logs.filter(l=>l.action===filter.action);
+    if (filter.status) logs=logs.filter(l=>l.status===filter.status);
+    return logs.sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+  }
+  getAuditStats() {
+    const logs=this.storage.loadLocal('auditLogs')||[]; const stats={};
+    logs.forEach(log=>{ if (!stats[log.action]) stats[log.action]={action:log.action,total:0,successful:0,failed:0}; stats[log.action].total++; if (log.status==='success') stats[log.action].successful++; else stats[log.action].failed++; });
+    return Object.values(stats);
+  }
+  getRecentActivity(limit=10) { return this.getAuditLogs().slice(0,limit); }
+  getActionDisplayName(action) { return {login:'Login',logout:'Logout',registration:'Registration',password_change:'Password Change',password_reset:'Password Reset',account_lockout:'Account Lockout',account_unlock:'Account Unlock',policy_change:'Policy Change',role_change:'Role Change'}[action]||action; }
+}
+const auditLogger = new AuditLogger(storageManager);
+
+// ═══════════════ SESSION MANAGER ═══════════════
+class SessionManager {
+  constructor(storage) { this.storage=storage; this.sessionTimeout=30*60*1000; }
+  generateSessionId() { const a=new Uint8Array(32); crypto.getRandomValues(a); return Array.from(a,b=>b.toString(16).padStart(2,'0')).join(''); }
+  createSession(user) {
+    const session={ sessionId:this.generateSessionId(), userId:user.id, username:user.username, role:user.role, createdAt:new Date().toISOString(), lastActivity:new Date().toISOString(), expiresAt:new Date(Date.now()+this.sessionTimeout).toISOString() };
+    this.storage.saveSession('currentSession',session); return session;
+  }
+  validateSession() { const s=this.getCurrentSession(); if (!s) return false; if (new Date(s.expiresAt).getTime()<=Date.now()) { this.destroySession(); return false; } this.refreshSession(); return true; }
+  getCurrentSession() { return this.storage.loadSession('currentSession'); }
+  destroySession() { this.storage.removeSession('currentSession'); }
+  refreshSession() { const s=this.getCurrentSession(); if (s) { s.lastActivity=new Date().toISOString(); s.expiresAt=new Date(Date.now()+this.sessionTimeout).toISOString(); this.storage.saveSession('currentSession',s); } }
+  getCurrentUser() { const s=this.getCurrentSession(); return s?{id:s.userId,username:s.username,role:s.role}:null; }
+  isLoggedIn() { return this.validateSession(); }
+}
+const sessionManager = new SessionManager(storageManager);
+
+// ═══════════════ EMPLOYEE DATA ═══════════════
+const employeeData = [
+  {id:1,username:'admin',fullName:'Иван Петров',department:'IT',position:'System Administrator'},
+  {id:2,username:'aibek.k',fullName:'Айбек Касымов',department:'IT',position:'Software Engineer'},
+  {id:3,username:'dana.s',fullName:'Дана Сарсенова',department:'IT',position:'Database Administrator'},
+  {id:4,username:'murat.t',fullName:'Мурат Токтаров',department:'IT',position:'Network Engineer'},
+  {id:5,username:'aliya.b',fullName:'Алия Бекова',department:'IT',position:'IT Support Specialist'},
+  {id:31,username:'gaukhar.n',fullName:'Гаухар Нурмуханова',department:'IT',position:'DevOps Engineer'},
+  {id:6,username:'gulnara.a',fullName:'Гульнара Абдуллаева',department:'Accounting',position:'Chief Accountant'},
+  {id:7,username:'askar.n',fullName:'Аскар Нурланов',department:'Accounting',position:'Senior Accountant'},
+  {id:8,username:'ainur.k',fullName:'Айнур Кенжебаева',department:'Accounting',position:'Accountant'},
+  {id:9,username:'timur.s',fullName:'Тимур Сулейменов',department:'Accounting',position:'Financial Analyst'},
+  {id:33,username:'kamila.zh',fullName:'Камила Жакупова',department:'Accounting',position:'Tax Specialist'},
+  {id:10,username:'nurlan.m',fullName:'Нурлан Мухамедов',department:'Sales',position:'Sales Manager'},
+  {id:11,username:'saule.zh',fullName:'Сауле Жумабаева',department:'Sales',position:'Sales Representative'},
+  {id:12,username:'arman.b',fullName:'Арман Байтасов',department:'Sales',position:'Sales Representative'},
+  {id:13,username:'madina.k',fullName:'Мадина Калиева',department:'Sales',position:'Sales Specialist'},
+  {id:14,username:'yerlan.a',fullName:'Ерлан Алимов',department:'Sales',position:'Account Manager'},
+  {id:32,username:'alibek.s',fullName:'Алибек Сагындыков',department:'Sales',position:'Regional Sales Manager'},
+  {id:15,username:'zhanar.s',fullName:'Жанар Сагындыкова',department:'HR',position:'HR Manager'},
+  {id:16,username:'baurzhan.t',fullName:'Бауржан Темиров',department:'HR',position:'HR Specialist'},
+  {id:17,username:'assel.n',fullName:'Асель Нурбекова',department:'HR',position:'Recruiter'},
+  {id:35,username:'roza.a',fullName:'Роза Абишева',department:'HR',position:'Training Coordinator'},
+  {id:18,username:'serik.k',fullName:'Серик Кадыров',department:'Production',position:'Production Manager'},
+  {id:19,username:'azamat.b',fullName:'Азамат Бекмуратов',department:'Production',position:'Production Engineer'},
+  {id:20,username:'dinara.m',fullName:'Динара Мусаева',department:'Production',position:'Quality Control Specialist'},
+  {id:21,username:'kanat.zh',fullName:'Канат Жанузаков',department:'Production',position:'Production Supervisor'},
+  {id:22,username:'laura.s',fullName:'Лаура Сейдахметова',department:'Production',position:'Production Operator'},
+  {id:34,username:'damir.k',fullName:'Дамир Кайратов',department:'Production',position:'Maintenance Engineer'},
+  {id:23,username:'aigerim.t',fullName:'Айгерим Токтарова',department:'Marketing',position:'Marketing Manager'},
+  {id:24,username:'dias.k',fullName:'Диас Кенжебеков',department:'Marketing',position:'Marketing Specialist'},
+  {id:25,username:'zhanna.a',fullName:'Жанна Абдрахманова',department:'Marketing',position:'Content Manager'},
+  {id:26,username:'ruslan.b',fullName:'Руслан Байжанов',department:'Logistics',position:'Logistics Manager'},
+  {id:27,username:'aida.s',fullName:'Аида Сарыбаева',department:'Logistics',position:'Logistics Coordinator'},
+  {id:28,username:'erbol.m',fullName:'Ербол Мукашев',department:'Logistics',position:'Warehouse Manager'},
+  {id:29,username:'saltanat.k',fullName:'Салтанат Кусаинова',department:'Legal',position:'Legal Counsel'},
+  {id:30,username:'miras.t',fullName:'Мирас Турсунов',department:'Legal',position:'Legal Assistant'}
+];
+
+async function initializeData() {
+  const existing = storageManager.loadLocal('employees');
+  if (!existing || existing.length === 0) storageManager.saveLocal('employees', employeeData);
+  const users = storageManager.loadLocal('users') || [];
+  if (users.length === 0) {
+    const result = await authManager.register('admin', 'Admin123!');
+    if (result.success) {
+      const us = storageManager.loadLocal('users') || [];
+      const admin = us.find(u => u.username === 'admin');
+      if (admin) { admin.role = 'admin'; storageManager.saveLocal('users', us); }
+      auditLogger.logEvent({ username:'system', action:'registration', details:'Default admin created', status:'success' });
+    }
+  }
+}
+
+// ═══════════════ APP LOGIC ═══════════════
+let currentUser = null;
+
+function initApp() {
+  initializeData().then(() => {
+    if (sessionManager.isLoggedIn()) { currentUser = sessionManager.getCurrentUser(); showDashboard(); }
+    else showAuthPage();
+  });
+}
+
+function showAuthPage() { document.getElementById('auth-page').style.display='flex'; document.getElementById('main-app').style.display='none'; showLoginForm(); }
+function showLoginForm() {
+  document.getElementById('login-form').style.display='block'; document.getElementById('register-form').style.display='none';
+  document.getElementById('login-tab').classList.add('active'); document.getElementById('register-tab').classList.remove('active'); clearMessages();
+}
+function showRegisterForm() {
+  document.getElementById('login-form').style.display='none'; document.getElementById('register-form').style.display='block';
+  document.getElementById('login-tab').classList.remove('active'); document.getElementById('register-tab').classList.add('active'); clearMessages(); updatePasswordRequirements();
+}
+
+async function handleLogin(event) {
+  event.preventDefault(); clearMessages();
+  const username = document.getElementById('login-username').value;
+  const password = document.getElementById('login-password').value;
+  const lockoutInfo = lockoutManager.isAccountLocked(username);
+  if (lockoutInfo.isLocked) { showError('login-error', `Account locked. Try again in ${lockoutInfo.remainingMinutes} minutes.`); auditLogger.logEvent({username,action:'login',details:'Attempt on locked account',status:'error'}); return; }
+  const result = await authManager.login(username, password);
+  if (result.success) {
+    lockoutManager.resetFailedAttempts(username); sessionManager.createSession(result.user); currentUser = result.user;
+    auditLogger.logEvent({username,action:'login',details:'Successful login',status:'success'}); showDashboard();
+  } else {
+    const ls = lockoutManager.recordFailedAttempt(username);
+    auditLogger.logEvent({username,action:'login',details:`Failed attempt (${ls.failedAttempts}/${ls.maxAttempts})`,status:'error'});
+    if (ls.isLocked) { showError('login-error', `Account locked. Try again in ${ls.remainingMinutes} minutes.`); auditLogger.logEvent({username,action:'account_lockout',details:'Locked after too many attempts',status:'error'}); }
+    else showError('login-error', `${result.error}. Attempt ${ls.failedAttempts} of ${ls.maxAttempts}.`);
+  }
+}
+
+async function handleRegister(event) {
+  event.preventDefault(); clearMessages();
+  const username = document.getElementById('register-username').value;
+  const password = document.getElementById('register-password').value;
+  const confirmPassword = document.getElementById('register-confirm-password').value;
+  if (password !== confirmPassword) { showError('register-error','Passwords do not match'); return; }
+  const result = await authManager.register(username, password);
+  if (result.success) {
+    auditLogger.logEvent({username,action:'registration',details:'Registered successfully',status:'success'});
+    showSuccess('register-success','Registration successful! Please login.');
+    document.getElementById('register-form-element').reset();
+    setTimeout(showLoginForm, 2000);
+  } else showError('register-error', result.error);
+}
+
+function showDashboard() {
+  document.getElementById('auth-page').style.display='none'; document.getElementById('main-app').style.display='flex';
+  updateUserInfo(); navigateTo('dashboard');
+}
+
+function updateUserInfo() {
+  const employee = authManager.getEmployee(currentUser.username);
+  document.getElementById('user-name').textContent = employee ? employee.fullName : currentUser.username;
+  document.getElementById('user-role').textContent = rbacManager.getRoleDisplayName(currentUser.role);
+  document.querySelectorAll('.admin-only').forEach(item => {
+    item.style.display = rbacManager.hasPermission(currentUser.role, item.dataset.feature) ? 'block' : 'none';
+  });
+}
+
+function navigateTo(view) {
+  document.querySelectorAll('.view').forEach(v => v.style.display='none');
+  document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+  const el = document.getElementById(`${view}-view`); if (el) el.style.display='block';
+  const mi = document.querySelector(`[data-view="${view}"]`); if (mi) mi.classList.add('active');
+  const loaders = {dashboard:loadDashboard, profile:loadProfile, 'policy-config':loadPolicyConfig, 'user-management':loadUserManagement, 'employee-database':loadEmployeeDatabase, 'audit-logs':loadAuditLogs};
+  if (loaders[view]) loaders[view]();
+}
+
+function loadDashboard() {
+  const employees = storageManager.loadLocal('employees')||[];
+  const users = storageManager.loadLocal('users')||[];
+  const policy = policyEngine.getCurrentPolicy();
+  const auditLogs = auditLogger.getAuditLogs();
+  const lockedUsers = users.filter(u => u.lockedUntil && new Date(u.lockedUntil) > new Date());
+  const failedLogins = auditLogs.filter(l => l.action==='login' && l.status==='error').length;
+  document.getElementById('stat-total-employees').textContent = employees.length;
+  document.getElementById('stat-registered-users').textContent = users.length;
+  document.getElementById('stat-unregistered').textContent = employees.length - users.length;
+  document.getElementById('stat-locked-users').textContent = lockedUsers.length;
+  document.getElementById('stat-failed-logins').textContent = failedLogins;
+  document.getElementById('stat-max-attempts').textContent = policy.maxFailedAttempts;
+  const recent = auditLogger.getRecentActivity(5);
+  document.getElementById('recent-activity-table').innerHTML = recent.map(a => `<tr><td>${new Date(a.timestamp).toLocaleTimeString()}</td><td>${a.username}</td><td>${auditLogger.getActionDisplayName(a.action)}</td><td><span class="badge badge-${a.status}">${a.status}</span></td></tr>`).join('');
+}
+
+function loadProfile() {
+  const user = authManager.getUser(currentUser.username);
+  const employee = authManager.getEmployee(currentUser.username);
+  if (user && employee) {
+    document.getElementById('profile-username').textContent = user.username;
+    document.getElementById('profile-fullname').textContent = employee.fullName;
+    document.getElementById('profile-department').textContent = employee.department;
+    document.getElementById('profile-position').textContent = employee.position;
+    document.getElementById('profile-role').textContent = rbacManager.getRoleDisplayName(user.role);
+    document.getElementById('profile-registered').textContent = new Date(user.registeredAt).toLocaleString();
+    document.getElementById('profile-last-login').textContent = user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never';
+  }
+}
+
+async function handlePasswordChange(event) {
+  event.preventDefault(); clearMessages();
+  const old = document.getElementById('old-password').value;
+  const nw = document.getElementById('new-password').value;
+  const cf = document.getElementById('confirm-new-password').value;
+  if (nw !== cf) { showError('password-change-error','Passwords do not match'); return; }
+  const result = await authManager.changePassword(currentUser.username, old, nw);
+  if (result.success) { auditLogger.logEvent({username:currentUser.username,action:'password_change',details:'Password changed',status:'success'}); showSuccess('password-change-success','Password changed successfully!'); document.getElementById('password-change-form').reset(); }
+  else showError('password-change-error', result.error);
+}
+
+function loadPolicyConfig() {
+  const policy = policyEngine.getCurrentPolicy();
+  document.getElementById('policy-min-length').value = policy.minLength;
+  document.getElementById('policy-uppercase').checked = policy.requireUppercase;
+  document.getElementById('policy-lowercase').checked = policy.requireLowercase;
+  document.getElementById('policy-numbers').checked = policy.requireNumbers;
+  document.getElementById('policy-special').checked = policy.requireSpecial;
+  document.getElementById('policy-max-attempts').value = policy.maxFailedAttempts;
+  document.getElementById('policy-lockout-duration').value = policy.lockoutDurationMinutes;
+}
+
+function handlePolicyUpdate(event) {
+  event.preventDefault(); clearMessages();
+  const policyData = {
+    minLength: parseInt(document.getElementById('policy-min-length').value),
+    requireUppercase: document.getElementById('policy-uppercase').checked,
+    requireLowercase: document.getElementById('policy-lowercase').checked,
+    requireNumbers: document.getElementById('policy-numbers').checked,
+    requireSpecial: document.getElementById('policy-special').checked,
+    maxFailedAttempts: parseInt(document.getElementById('policy-max-attempts').value),
+    lockoutDurationMinutes: parseInt(document.getElementById('policy-lockout-duration').value),
+    createdBy: currentUser.username
+  };
+  const result = policyEngine.updatePolicy(policyData);
+  if (result.success) { auditLogger.logEvent({username:currentUser.username,action:'policy_change',details:`Policy updated: minLength=${policyData.minLength}`,status:'success'}); showSuccess('policy-success','Policy updated successfully!'); }
+  else showError('policy-error', result.error);
+}
+
+function loadUserManagement() {
+  const users = authManager.getAllUsers();
+  const employees = storageManager.loadLocal('employees')||[];
+  document.getElementById('users-table').innerHTML = users.map(user => {
+    const emp = employees.find(e => e.username === user.username);
+    const li = lockoutManager.isAccountLocked(user.username);
+    return `<tr>
+      <td>${user.username}</td>
+      <td>${emp ? emp.fullName : 'Unknown'}</td>
+      <td>${emp ? emp.department : '-'}</td>
+      <td>
+        <select onchange="changeUserRole(${user.id}, this.value)" style="padding:4px;border-radius:4px;border:1px solid #ddd;">
+          <option value="user" ${user.role==='user'?'selected':''}>User</option>
+          <option value="operator" ${user.role==='operator'?'selected':''}>Operator</option>
+          <option value="admin" ${user.role==='admin'?'selected':''}>Admin</option>
+        </select>
+      </td>
+      <td>${user.failedAttempts||0}</td>
+      <td><span class="badge badge-${li.isLocked?'error':'success'}">${li.isLocked?'Locked':'Active'}</span></td>
+      <td>
+        ${li.isLocked?`<button class="btn btn-sm" onclick="unlockUser(${user.id})">Unlock</button>`:''}
+        <button class="btn btn-sm" onclick="showResetPasswordModal(${user.id})">Reset Pwd</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function changeUserRole(userId, role) {
+  const result = rbacManager.assignRole(userId, role, storageManager);
+  if (result.success) {
+    const user = authManager.getUserById(userId);
+    auditLogger.logEvent({username:currentUser.username,action:'role_change',details:`Changed role of ${user.username} to ${role}`,status:'success'});
+  }
+}
+
+function unlockUser(userId) {
+  const result = lockoutManager.unlockAccount(userId);
+  if (result.success) { const u=authManager.getUserById(userId); auditLogger.logEvent({username:currentUser.username,action:'account_unlock',details:`Unlocked: ${u.username}`,status:'success'}); loadUserManagement(); }
+  else alert('Error: '+result.error);
+}
+
+function showResetPasswordModal(userId) {
+  const pw = prompt('Enter new password for user:');
+  if (pw) resetUserPassword(userId, pw);
+}
+
+async function resetUserPassword(userId, newPassword) {
+  const result = await authManager.resetPassword(userId, newPassword);
+  if (result.success) { const u=authManager.getUserById(userId); auditLogger.logEvent({username:currentUser.username,action:'password_reset',details:`Reset pwd for: ${u.username}`,status:'success'}); alert('Password reset successfully!'); loadUserManagement(); }
+  else alert('Error: '+result.error);
+}
+
+function loadEmployeeDatabase() {
+  const employees = storageManager.loadLocal('employees')||[];
+  const users = storageManager.loadLocal('users')||[];
+  document.getElementById('employees-table').innerHTML = employees.map(e => {
+    const isReg = users.some(u => u.username === e.username);
+    return `<tr><td>${e.username}</td><td>${e.fullName}</td><td>${e.department}</td><td>${e.position}</td><td><span class="badge badge-${isReg?'success':'warning'}">${isReg?'Registered':'Not Registered'}</span></td></tr>`;
+  }).join('');
+}
+
+function loadAuditLogs() {
+  const stats = auditLogger.getAuditStats();
+  document.getElementById('audit-stats-table').innerHTML = stats.map(s => `<tr><td>${auditLogger.getActionDisplayName(s.action)}</td><td>${s.total}</td><td>${s.successful}</td><td>${s.failed}</td></tr>`).join('');
+  const logs = auditLogger.getAuditLogs();
+  document.getElementById('audit-logs-table').innerHTML = logs.map(l => `<tr><td>${new Date(l.timestamp).toLocaleString()}</td><td>${l.username}</td><td>${auditLogger.getActionDisplayName(l.action)}</td><td>${l.details}</td><td>${l.ip}</td><td><span class="badge badge-${l.status}">${l.status}</span></td></tr>`).join('');
+}
+
+function handleLogout() {
+  auditLogger.logEvent({username:currentUser.username,action:'logout',details:'User logged out',status:'success'});
+  sessionManager.destroySession(); currentUser=null; showAuthPage();
+}
+
+function updatePasswordRequirements() {
+  const policy = policyEngine.getCurrentPolicy();
+  const reqs = [`At least ${policy.minLength} characters`, policy.requireUppercase?'One uppercase letter':null, policy.requireLowercase?'One lowercase letter':null, policy.requireNumbers?'One number':null, policy.requireSpecial?'One special character':null].filter(Boolean);
+  document.getElementById('password-requirements').innerHTML = reqs.map(r=>`<li>${r}</li>`).join('');
+}
+
+function validatePasswordRealtime() {
+  const password = document.getElementById('register-password').value;
+  const v = policyEngine.validatePassword(password);
+  document.getElementById('req-length').className = 'indicator ' + (v.requirements.length?'valid':'invalid');
+  document.getElementById('req-uppercase').className = 'indicator ' + (v.requirements.uppercase?'valid':'invalid');
+  document.getElementById('req-lowercase').className = 'indicator ' + (v.requirements.lowercase?'valid':'invalid');
+  document.getElementById('req-numbers').className = 'indicator ' + (v.requirements.numbers?'valid':'invalid');
+  document.getElementById('req-special').className = 'indicator ' + (v.requirements.special?'valid':'invalid');
+  document.getElementById('register-submit').disabled = !v.valid;
+}
+
+function generatePassword() {
+  const pw = policyEngine.generatePassword();
+  document.getElementById('register-password').value = pw;
+  document.getElementById('register-confirm-password').value = pw;
+  validatePasswordRealtime();
+}
+
+function showError(id, msg) { const el=document.getElementById(id); if(el){el.textContent=msg;el.style.display='block';} }
+function showSuccess(id, msg) { const el=document.getElementById(id); if(el){el.textContent=msg;el.style.display='block';} }
+function clearMessages() { document.querySelectorAll('.error-message,.success-message').forEach(el=>{el.style.display='none';el.textContent='';}); }
+
+document.addEventListener('DOMContentLoaded', initApp);
+</script>
+</body>
+</html>
