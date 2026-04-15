@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Создание пользователей</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            padding: 40px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+        }
+        h1 { color: #667eea; margin-bottom: 20px; }
+        .success { color: #28a745; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+        .info { color: #17a2b8; }
+        pre { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 10px; 
+            overflow-x: auto;
+            border-left: 4px solid #667eea;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 5px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        .credentials {
+            background: #e8f4fd;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+        .step {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            border-left: 4px solid #28a745;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Создание супер-администраторов</h1>
+        <div id="output"></div>
+        
+        <div class="credentials">
+            <h3>📋 Учетные данные:</h3>
+            <p><strong>Пользователь 1:</strong><br>
+            Логин: <code>bekishev.islam</code><br>
+            Пароль: <code>Admin123!</code></p>
+            
+            <p><strong>Пользователь 2:</strong><br>
+            Логин: <code>belosanova.amina</code><br>
+            Пароль: <code>Admin123!</code></p>
+        </div>
+        
+        <button onclick="createUsers()">🚀 Создать пользователей</button>
+        <button onclick="checkUsers()">🔍 Проверить пользователей</button>
+        <button onclick="clearData()">🗑️ Очистить данные</button>
+        <button onclick="goToApp()">➡️ Перейти к приложению</button>
+    </div>
+
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.innerHTML = message;
+            output.appendChild(div);
+        }
+        
+        function clear() {
+            output.innerHTML = '';
+        }
+
+        // Функция хеширования пароля (SHA-256)
+        async function hashPassword(password, salt) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password + salt);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Генерация соли
+        function generateSalt() {
+            const array = new Uint8Array(16);
+            crypto.getRandomValues(array);
+            return Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function createUsers() {
+            clear();
+            log('<h3>🔄 Создание пользователей...</h3>');
+            
+            try {
+                // Создаём сотрудников
+                const employees = [
+                    { id: 1, username: 'bekishev.islam', fullName: 'Бекишев Ислам', department: 'IT', position: 'Super Administrator' },
+                    { id: 2, username: 'belosanova.amina', fullName: 'Белосанова Амина', department: 'IT', position: 'Super Administrator' }
+                ];
+                
+                localStorage.setItem('employees', JSON.stringify(employees));
+                log('<p class="success">✅ Сотрудники созданы</p>');
+                
+                // Создаём пользователей с паролями
+                const users = [];
+                
+                for (const emp of employees) {
+                    const salt = generateSalt();
+                    const passwordHash = await hashPassword('Admin123!', salt);
+                    
+                    const user = {
+                        id: users.length + 1,
+                        username: emp.username,
+                        passwordHash: passwordHash,
+                        salt: salt,
+                        role: 'superadmin',
+                        isActive: true,
+                        failedAttempts: 0,
+                        lockedUntil: null,
+                        registeredAt: new Date().toISOString(),
+                        lastLogin: null,
+                        passwordHistory: [passwordHash],
+                        mfaEnabled: false
+                    };
+                    
+                    users.push(user);
+                    log(`<p class="success">✅ Создан: ${emp.fullName} (${emp.username})</p>`);
+                }
+                
+                localStorage.setItem('users', JSON.stringify(users));
+                
+                // Создаём политику по умолчанию
+                const policies = [{
+                    id: 1,
+                    name: 'Default Policy',
+                    minLength: 8,
+                    requireUppercase: true,
+                    requireLowercase: true,
+                    requireNumbers: true,
+                    requireSpecial: true,
+                    maxFailedAttempts: 3,
+                    lockoutDurationMinutes: 15,
+                    passwordExpiryDays: 90,
+                    passwordHistoryCount: 5,
+                    isActive: true,
+                    createdAt: new Date().toISOString(),
+                    createdBy: 'system'
+                }];
+                
+                localStorage.setItem('policies', JSON.stringify(policies));
+                log('<p class="success">✅ Политика безопасности создана</p>');
+                
+                // Создаём пустой журнал аудита
+                localStorage.setItem('auditLogs', JSON.stringify([]));
+                log('<p class="success">✅ Журнал аудита инициализирован</p>');
+                
+                log('<h3 class="success">🎉 ВСЁ ГОТОВО!</h3>');
+                log('<div class="step"><strong>Следующий шаг:</strong><br>Нажмите "➡️ Перейти к приложению" и войдите с учетными данными выше</div>');
+                
+            } catch (error) {
+                log(`<p class="error">❌ Ошибка: ${error.message}</p>`);
+            }
+        }
+
+        function checkUsers() {
+            clear();
+            log('<h3>🔍 Проверка данных...</h3>');
+            
+            const users = localStorage.getItem('users');
+            const employees = localStorage.getItem('employees');
+            const policies = localStorage.getItem('policies');
+            
+            if (!users || users === '[]') {
+                log('<p class="error">❌ Пользователи НЕ найдены</p>');
+                log('<p class="info">Нажмите "🚀 Создать пользователей"</p>');
+            } else {
+                const usersData = JSON.parse(users);
+                log(`<p class="success">✅ Найдено пользователей: ${usersData.length}</p>`);
+                
+                usersData.forEach(user => {
+                    log(`<div class="step">
+                        <strong>👤 ${user.username}</strong><br>
+                        Роль: ${user.role}<br>
+                        Зарегистрирован: ${new Date(user.registeredAt).toLocaleString()}<br>
+                        Статус: ${user.isActive ? 'Активен' : 'Неактивен'}
+                    </div>`);
+                });
+                
+                log('<h3 class="success">✅ Всё готово для входа!</h3>');
+                log('<div class="step"><strong>Учетные данные:</strong><br>bekishev.islam / Admin123!<br>belosanova.amina / Admin123!</div>');
+            }
+            
+            if (!employees || employees === '[]') {
+                log('<p class="error">❌ Сотрудники НЕ найдены</p>');
+            } else {
+                const empData = JSON.parse(employees);
+                log(`<p class="success">✅ Найдено сотрудников: ${empData.length}</p>`);
+            }
+            
+            if (!policies || policies === '[]') {
+                log('<p class="error">❌ Политики НЕ найдены</p>');
+            } else {
+                log('<p class="success">✅ Политика безопасности настроена</p>');
+            }
+        }
+
+        function clearData() {
+            if (confirm('Вы уверены? Это удалит всех пользователей!')) {
+                localStorage.removeItem('users');
+                localStorage.removeItem('employees');
+                localStorage.removeItem('policies');
+                localStorage.removeItem('auditLogs');
+                
+                clear();
+                log('<p class="success">✅ Все данные удалены</p>');
+                log('<p class="info">Нажмите "🚀 Создать пользователей" чтобы создать заново</p>');
+            }
+        }
+
+        function goToApp() {
+            window.location.href = 'index.html';
+        }
+
+        // Автоматическая проверка при загрузке
+        window.onload = function() {
+            checkUsers();
+        };
+    </script>
+</body>
+</html>

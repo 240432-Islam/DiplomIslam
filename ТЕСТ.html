@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Тест создания пользователей</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #00ff00; }
+        .success { color: #00ff00; }
+        .error { color: #ff0000; }
+        .info { color: #00aaff; }
+        pre { background: #000; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Проверка создания пользователей</h1>
+    <div id="output"></div>
+
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = message;
+            output.appendChild(div);
+        }
+
+        // Проверка localStorage
+        log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        log('📊 Проверка localStorage:', 'info');
+        log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        const users = localStorage.getItem('users');
+        const employees = localStorage.getItem('employees');
+        
+        if (!users || users === '[]') {
+            log('❌ Пользователи НЕ найдены в localStorage', 'error');
+            log('ℹ️  Откройте index.html чтобы создать пользователей', 'info');
+        } else {
+            log('✅ Пользователи найдены!', 'success');
+            const usersData = JSON.parse(users);
+            log(`📊 Количество: ${usersData.length}`, 'success');
+            
+            usersData.forEach(user => {
+                log(`\n👤 Пользователь: ${user.username}`, 'success');
+                log(`   Роль: ${user.role}`, 'info');
+                log(`   Зарегистрирован: ${new Date(user.registeredAt).toLocaleString()}`, 'info');
+            });
+        }
+        
+        log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        log('📋 Сотрудники:', 'info');
+        log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        if (!employees || employees === '[]') {
+            log('❌ Сотрудники НЕ найдены', 'error');
+        } else {
+            const employeesData = JSON.parse(employees);
+            log(`✅ Найдено сотрудников: ${employeesData.length}`, 'success');
+            
+            employeesData.forEach(emp => {
+                log(`\n👔 ${emp.fullName}`, 'success');
+                log(`   Username: ${emp.username}`, 'info');
+                log(`   Отдел: ${emp.department}`, 'info');
+                log(`   Должность: ${emp.position}`, 'info');
+            });
+        }
+        
+        log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        log('🔐 Учетные данные для входа:', 'info');
+        log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        log('Username: bekishev.islam', 'success');
+        log('Password: Admin123!', 'success');
+        log('', 'info');
+        log('Username: belosanova.amina', 'success');
+        log('Password: Admin123!', 'success');
+        
+        log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        log('💡 Что делать дальше:', 'info');
+        log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        if (!users || users === '[]') {
+            log('1. Закройте этот файл', 'info');
+            log('2. Откройте index.html', 'info');
+            log('3. Пользователи создадутся автоматически', 'info');
+            log('4. Войдите с учетными данными выше', 'info');
+        } else {
+            log('✅ Всё готово!', 'success');
+            log('1. Откройте index.html', 'info');
+            log('2. Войдите с учетными данными выше', 'info');
+        }
+    </script>
+</body>
+</html>
