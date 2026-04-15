@@ -1,339 +1,182 @@
 /**
  * Authentication Manager
- * Handles user registration, login, logout, and password management
+ * Регистрация, вход, смена пароля — всё через Supabase.
  */
 
 class AuthManager {
-  constructor(storage, policyEngine) {
-    this.storage = storage;
-    this.policyEngine = policyEngine;
-  }
-
-  /**
-   * Hash password using Web Crypto API
-   * @param {string} password - Plain text password
-   * @param {string} salt - Salt for hashing
-   * @returns {Promise<string>} Hashed password
-   */
   async hashPassword(password, salt) {
     const encoder = new TextEncoder();
     const data = encoder.encode(password + salt);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    const buf = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
-  /**
-   * Generate random salt
-   * @returns {string} Random salt
-   */
   generateSalt() {
-    const array = new Uint8Array(16);
-    crypto.getRandomValues(array);
-    return Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+    const arr = new Uint8Array(16);
+    crypto.getRandomValues(arr);
+    return Array.from(arr, b => b.toString(16).padStart(2, '0')).join('');
   }
 
-  /**
-   * Check if username exists in employee database
-   * @param {string} username - Username to check
-   * @returns {boolean} True if employee exists
-   */
-  isEmployeeExists(username) {
-    const employees = this.storage.loadLocal('employees') || [];
-    return employees.some(e => e.username === username);
-  }
+  // ─── REGISTER ───────────────────────────────────────────────────────────────
 
-  /**
-   * Check if user is already registered
-   * @param {string} username - Username to check
-   * @returns {boolean} True if user registered
-   */
-  isUserRegistered(username) {
-    const users = this.storage.loadLocal('users') || [];
-    return users.some(u => u.username === username);
-  }
-
-  /**
-   * Get employee data by username
-   * @param {string} username - Username
-   * @returns {Object|null} Employee data or null
-   */
-  getEmployee(username) {
-    const employees = this.storage.loadLocal('employees') || [];
-    return employees.find(e => e.username === username) || null;
-  }
-
-  /**
-   * Register a new user
-   * @param {string} username - Username from employee database
-   * @param {string} password - User's chosen password
-   * @returns {Promise<Object>} Auth result with success flag and user object or error
-   */
   async register(username, password) {
-    // Check if employee exists
-    if (!this.isEmployeeExists(username)) {
-      return {
-        success: false,
-        error: 'Username not found in employee database',
-        user: null
-      };
+    // 1. Проверяем что сотрудник существует
+    const employee = await db_getEmployeeByUsername(username);
+    if (!employee) {
+      return { success: false, error: 'Пользователь не найден в базе сотрудников', user: null };
     }
 
-    // Check if already registered
-    if (this.isUserRegistered(username)) {
-      return {
-        success: false,
-        error: 'User already registered',
-        user: null
-      };
+    // 2. Проверяем что не зарегистрирован
+    const existing = await db_getUserByUsername(username);
+    if (existing) {
+      return { success: false, error: 'Пользователь уже зарегистрирован', user: null };
     }
 
-    // Validate password against policy
-    const validation = this.policyEngine.validatePassword(password);
+    // 3. Валидация пароля
+    const validation = policyEngine.validatePassword(password);
     if (!validation.valid) {
-      return {
-        success: false,
-        error: validation.errors.join(', '),
-        user: null
-      };
+      return { success: false, error: validation.errors.join(', '), user: null };
     }
 
-    // Hash password
+    // 4. Хэшируем пароль
     const salt = this.generateSalt();
     const passwordHash = await this.hashPassword(password, salt);
 
-    // Create user account
-    const users = this.storage.loadLocal('users') || [];
+    // 5. Создаём пользователя в Supabase
     const newUser = {
-      id: users.length + 1,
-      username: username,
-      passwordHash: passwordHash,
-      salt: salt,
-      role: 'user', // Default role
-      isActive: true,
-      failedAttempts: 0,
-      lockedUntil: null,
-      registeredAt: new Date().toISOString(),
-      lastLogin: null,
-      passwordHistory: [passwordHash],
-      mfaEnabled: false,
-      mfaSecret: null,
+      username,
+      password_hash: passwordHash,
+      salt,
+      role: 'user',
+      is_active: true,
+      failed_attempts: 0,
+      locked_until: null,
+      last_login: null,
+      password_history: [passwordHash],
+      mfa_enabled: false,
+      mfa_secret: null,
       email: null
     };
 
-    users.push(newUser);
-    this.storage.saveLocal('users', users);
+    const result = await db_createUser(newUser);
+    if (!result.success) {
+      return { success: false, error: result.error, user: null };
+    }
 
-    return {
-      success: true,
-      error: null,
-      user: newUser
-    };
+    return { success: true, error: null, user: result.data };
   }
 
-  /**
-   * Authenticate user credentials
-   * @param {string} username - Username
-   * @param {string} password - Password
-   * @returns {Promise<Object>} Auth result with success flag and user object or error
-   */
+  // ─── LOGIN ──────────────────────────────────────────────────────────────────
+
   async login(username, password) {
-    const users = this.storage.loadLocal('users') || [];
-    const user = users.find(u => u.username === username);
-
+    const user = await db_getUserByUsername(username);
     if (!user) {
-      return {
-        success: false,
-        error: 'Invalid credentials',
-        user: null
-      };
+      return { success: false, error: 'Неверное имя пользователя или пароль', user: null };
     }
 
-    // Verify password
-    const passwordHash = await this.hashPassword(password, user.salt);
-    if (passwordHash !== user.passwordHash) {
-      return {
-        success: false,
-        error: 'Invalid credentials',
-        user: user
-      };
+    const hash = await this.hashPassword(password, user.salt);
+    if (hash !== user.password_hash) {
+      return { success: false, error: 'Неверное имя пользователя или пароль', user };
     }
 
-    // Update last login
-    user.lastLogin = new Date().toISOString();
-    this.storage.saveLocal('users', users);
+    // Обновляем last_login
+    await db_updateUser(user.id, { last_login: new Date().toISOString() });
+    user.last_login = new Date().toISOString();
 
-    return {
-      success: true,
-      error: null,
-      user: user,
-      requiresMFA: user.mfaEnabled
-    };
+    // Нормализуем поля для совместимости с остальным кодом
+    return { success: true, error: null, user: this._normalize(user) };
   }
 
-  /**
-   * Log out current user
-   * @returns {void}
-   */
-  logout() {
-    // Session destruction is handled by SessionManager
-    // This method is here for completeness
-  }
+  // ─── CHANGE PASSWORD ────────────────────────────────────────────────────────
 
-  /**
-   * Change user password
-   * @param {string} username - Username
-   * @param {string} oldPassword - Current password
-   * @param {string} newPassword - New password
-   * @returns {Promise<Object>} Result with success flag and error message
-   */
   async changePassword(username, oldPassword, newPassword) {
-    const users = this.storage.loadLocal('users') || [];
-    const user = users.find(u => u.username === username);
+    const user = await db_getUserByUsername(username);
+    if (!user) return { success: false, error: 'Пользователь не найден' };
 
-    if (!user) {
-      return {
-        success: false,
-        error: 'User not found'
-      };
-    }
+    const oldHash = await this.hashPassword(oldPassword, user.salt);
+    if (oldHash !== user.password_hash) return { success: false, error: 'Текущий пароль неверен' };
 
-    // Verify old password
-    const oldPasswordHash = await this.hashPassword(oldPassword, user.salt);
-    if (oldPasswordHash !== user.passwordHash) {
-      return {
-        success: false,
-        error: 'Current password is incorrect'
-      };
-    }
+    const validation = policyEngine.validatePassword(newPassword);
+    if (!validation.valid) return { success: false, error: validation.errors.join(', ') };
 
-    // Validate new password against policy
-    const validation = this.policyEngine.validatePassword(newPassword);
-    if (!validation.valid) {
-      return {
-        success: false,
-        error: validation.errors.join(', ')
-      };
-    }
-
-    // Hash new password
     const newSalt = this.generateSalt();
-    const newPasswordHash = await this.hashPassword(newPassword, newSalt);
+    const newHash = await this.hashPassword(newPassword, newSalt);
 
-    // Check password history
-    if (this.policyEngine.isPasswordInHistory(username, newPasswordHash)) {
-      return {
-        success: false,
-        error: 'Password has been used recently. Please choose a different password'
-      };
+    const history = user.password_history || [];
+    if (policyEngine.isPasswordInHistory(history, newHash)) {
+      return { success: false, error: 'Этот пароль уже использовался. Выберите другой.' };
     }
 
-    // Update password
-    user.passwordHash = newPasswordHash;
-    user.salt = newSalt;
+    const policy = policyEngine.getCurrentPolicy();
+    history.push(newHash);
+    if (history.length > policy.passwordHistoryCount) history.splice(0, history.length - policy.passwordHistoryCount);
 
-    // Update password history
-    if (!user.passwordHistory) {
-      user.passwordHistory = [];
-    }
-    user.passwordHistory.push(newPasswordHash);
-
-    // Keep only last N passwords based on policy
-    const policy = this.policyEngine.getCurrentPolicy();
-    if (user.passwordHistory.length > policy.passwordHistoryCount) {
-      user.passwordHistory = user.passwordHistory.slice(-policy.passwordHistoryCount);
-    }
-
-    this.storage.saveLocal('users', users);
-
-    return {
-      success: true,
-      error: null
-    };
+    await db_updateUser(user.id, { password_hash: newHash, salt: newSalt, password_history: history });
+    return { success: true, error: null };
   }
 
-  /**
-   * Reset user password (admin only)
-   * @param {number} userId - User ID
-   * @param {string} newPassword - New password
-   * @returns {Promise<Object>} Result with success flag and error message
-   */
+  // ─── RESET PASSWORD (admin) ─────────────────────────────────────────────────
+
   async resetPassword(userId, newPassword) {
-    const users = this.storage.loadLocal('users') || [];
-    const user = users.find(u => u.id === userId);
+    const user = await db_getUserById(userId);
+    if (!user) return { success: false, error: 'Пользователь не найден' };
 
-    if (!user) {
-      return {
-        success: false,
-        error: 'User not found'
-      };
-    }
+    const validation = policyEngine.validatePassword(newPassword);
+    if (!validation.valid) return { success: false, error: validation.errors.join(', ') };
 
-    // Validate new password against policy
-    const validation = this.policyEngine.validatePassword(newPassword);
-    if (!validation.valid) {
-      return {
-        success: false,
-        error: validation.errors.join(', ')
-      };
-    }
-
-    // Hash new password
     const newSalt = this.generateSalt();
-    const newPasswordHash = await this.hashPassword(newPassword, newSalt);
+    const newHash = await this.hashPassword(newPassword, newSalt);
 
-    // Update password
-    user.passwordHash = newPasswordHash;
-    user.salt = newSalt;
+    const policy = policyEngine.getCurrentPolicy();
+    const history = user.password_history || [];
+    history.push(newHash);
+    if (history.length > policy.passwordHistoryCount) history.splice(0, history.length - policy.passwordHistoryCount);
 
-    // Update password history
-    if (!user.passwordHistory) {
-      user.passwordHistory = [];
-    }
-    user.passwordHistory.push(newPasswordHash);
+    await db_updateUser(userId, { password_hash: newHash, salt: newSalt, password_history: history });
+    return { success: true, error: null };
+  }
 
-    // Keep only last N passwords based on policy
-    const policy = this.policyEngine.getCurrentPolicy();
-    if (user.passwordHistory.length > policy.passwordHistoryCount) {
-      user.passwordHistory = user.passwordHistory.slice(-policy.passwordHistoryCount);
-    }
+  // ─── GETTERS ────────────────────────────────────────────────────────────────
 
-    this.storage.saveLocal('users', users);
+  async getUser(username) {
+    const u = await db_getUserByUsername(username);
+    return u ? this._normalize(u) : null;
+  }
 
+  async getUserById(id) {
+    const u = await db_getUserById(id);
+    return u ? this._normalize(u) : null;
+  }
+
+  async getAllUsers() {
+    const users = await db_getUsers();
+    return users.map(u => this._normalize(u));
+  }
+
+  async getEmployee(username) {
+    return await db_getEmployeeByUsername(username);
+  }
+
+  /**
+   * Нормализация: snake_case из БД → camelCase для остального кода
+   */
+  _normalize(u) {
     return {
-      success: true,
-      error: null
+      id: u.id,
+      username: u.username,
+      passwordHash: u.password_hash,
+      salt: u.salt,
+      role: u.role,
+      isActive: u.is_active,
+      failedAttempts: u.failed_attempts,
+      lockedUntil: u.locked_until,
+      registeredAt: u.registered_at,
+      lastLogin: u.last_login,
+      passwordHistory: u.password_history,
+      mfaEnabled: u.mfa_enabled,
+      email: u.email
     };
-  }
-
-  /**
-   * Get user by username
-   * @param {string} username - Username
-   * @returns {Object|null} User object or null
-   */
-  getUser(username) {
-    const users = this.storage.loadLocal('users') || [];
-    return users.find(u => u.username === username) || null;
-  }
-
-  /**
-   * Get user by ID
-   * @param {number} userId - User ID
-   * @returns {Object|null} User object or null
-   */
-  getUserById(userId) {
-    const users = this.storage.loadLocal('users') || [];
-    return users.find(u => u.id === userId) || null;
-  }
-
-  /**
-   * Get all users
-   * @returns {Array} Array of all users
-   */
-  getAllUsers() {
-    return this.storage.loadLocal('users') || [];
   }
 }
 
-// Export singleton instance
-const authManager = new AuthManager(storageManager, policyEngine);
+const authManager = new AuthManager();

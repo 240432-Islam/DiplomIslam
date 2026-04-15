@@ -1,310 +1,154 @@
 /**
  * Password Policy Engine
- * Handles password validation, policy management, and password generation
+ * Политика загружается из Supabase и кэшируется в памяти.
  */
 
 class PolicyEngine {
-  constructor(storage) {
-    this.storage = storage;
-    this.initializeDefaultPolicy();
+  constructor() {
+    this._cachedPolicy = null;
   }
 
   /**
-   * Initialize default password policy if not exists
+   * Загрузить активную политику из Supabase (с кэшем).
+   * Используй await везде где нужна политика.
    */
-  initializeDefaultPolicy() {
-    const policies = this.storage.loadLocal('policies') || [];
-    if (policies.length === 0) {
-      const defaultPolicy = {
-        id: 1,
-        name: 'Default Policy',
-        minLength: 8,
-        requireUppercase: true,
-        requireLowercase: true,
-        requireNumbers: true,
-        requireSpecial: true,
-        maxFailedAttempts: 3,
-        lockoutDurationMinutes: 15,
-        passwordExpiryDays: 90,
-        passwordHistoryCount: 5,
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        createdBy: 'system'
-      };
-      policies.push(defaultPolicy);
-      this.storage.saveLocal('policies', policies);
+  async loadPolicy() {
+    if (this._cachedPolicy) return this._cachedPolicy;
+    const policy = await db_getActivePolicy();
+    if (policy) {
+      this._cachedPolicy = policy;
+    } else {
+      // Fallback если БД пуста
+      this._cachedPolicy = this._defaultPolicy();
     }
+    return this._cachedPolicy;
   }
 
-  /**
-   * Get current active password policy
-   * @returns {Object} Current policy configuration
-   */
+  /** Синхронная версия — только если политика уже закэширована */
   getCurrentPolicy() {
-    const policies = this.storage.loadLocal('policies') || [];
-    return policies.find(p => p.isActive) || policies[0];
+    return this._cachedPolicy || this._defaultPolicy();
+  }
+
+  _defaultPolicy() {
+    return {
+      id: 1, name: 'Default Policy',
+      minLength: 8,
+      requireUppercase: true, requireLowercase: true,
+      requireNumbers: true, requireSpecial: true,
+      maxFailedAttempts: 3, lockoutDurationMinutes: 15,
+      passwordExpiryDays: 90, passwordHistoryCount: 5,
+      isActive: true
+    };
   }
 
   /**
-   * Validate password against current policy
-   * @param {string} password - Password to validate
-   * @returns {Object} Validation result with valid flag and error messages
+   * Валидация пароля против политики
    */
   validatePassword(password) {
     const policy = this.getCurrentPolicy();
     const errors = [];
-    const requirements = {
-      length: false,
-      uppercase: false,
-      lowercase: false,
-      numbers: false,
-      special: false
-    };
+    const requirements = { length: false, uppercase: false, lowercase: false, numbers: false, special: false };
 
-    // Check length
-    if (password.length >= policy.minLength) {
-      requirements.length = true;
-    } else {
-      errors.push(`Password must be at least ${policy.minLength} characters long`);
-    }
+    if (password.length >= policy.minLength) { requirements.length = true; }
+    else { errors.push(`Минимум ${policy.minLength} символов`); }
 
-    // Check uppercase
     if (policy.requireUppercase) {
-      if (/[A-Z]/.test(password)) {
-        requirements.uppercase = true;
-      } else {
-        errors.push('Password must contain at least one uppercase letter');
-      }
-    } else {
-      requirements.uppercase = true;
-    }
+      if (/[A-Z]/.test(password)) { requirements.uppercase = true; }
+      else { errors.push('Минимум одна заглавная буква'); }
+    } else { requirements.uppercase = true; }
 
-    // Check lowercase
     if (policy.requireLowercase) {
-      if (/[a-z]/.test(password)) {
-        requirements.lowercase = true;
-      } else {
-        errors.push('Password must contain at least one lowercase letter');
-      }
-    } else {
-      requirements.lowercase = true;
-    }
+      if (/[a-z]/.test(password)) { requirements.lowercase = true; }
+      else { errors.push('Минимум одна строчная буква'); }
+    } else { requirements.lowercase = true; }
 
-    // Check numbers
     if (policy.requireNumbers) {
-      if (/[0-9]/.test(password)) {
-        requirements.numbers = true;
-      } else {
-        errors.push('Password must contain at least one number');
-      }
-    } else {
-      requirements.numbers = true;
-    }
+      if (/[0-9]/.test(password)) { requirements.numbers = true; }
+      else { errors.push('Минимум одна цифра'); }
+    } else { requirements.numbers = true; }
 
-    // Check special characters
     if (policy.requireSpecial) {
-      if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
-        requirements.special = true;
-      } else {
-        errors.push('Password must contain at least one special character');
-      }
-    } else {
-      requirements.special = true;
-    }
+      if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) { requirements.special = true; }
+      else { errors.push('Минимум один специальный символ'); }
+    } else { requirements.special = true; }
 
-    return {
-      valid: errors.length === 0,
-      errors: errors,
-      requirements: requirements
-    };
+    return { valid: errors.length === 0, errors, requirements };
   }
 
   /**
-   * Update password policy (admin only)
-   * @param {Object} policyData - New policy configuration
-   * @returns {Object} Result with success flag and error message
+   * Обновить политику — сохраняет в Supabase
    */
-  updatePolicy(policyData) {
-    // Validate policy settings
-    const validation = this.validatePolicySettings(policyData);
-    if (!validation.valid) {
-      return {
-        success: false,
-        error: validation.errors.join(', ')
-      };
+  async updatePolicy(policyData) {
+    const validation = this._validatePolicySettings(policyData);
+    if (!validation.valid) return { success: false, error: validation.errors.join(', ') };
+
+    const result = await db_createPolicy(policyData);
+    if (result.success) {
+      this._cachedPolicy = result.data; // обновить кэш
     }
-
-    const policies = this.storage.loadLocal('policies') || [];
-    
-    // Deactivate current policy
-    policies.forEach(p => p.isActive = false);
-
-    // Create new policy
-    const newPolicy = {
-      id: policies.length + 1,
-      name: policyData.name || `Policy ${policies.length + 1}`,
-      minLength: policyData.minLength,
-      requireUppercase: policyData.requireUppercase,
-      requireLowercase: policyData.requireLowercase,
-      requireNumbers: policyData.requireNumbers,
-      requireSpecial: policyData.requireSpecial,
-      maxFailedAttempts: policyData.maxFailedAttempts,
-      lockoutDurationMinutes: policyData.lockoutDurationMinutes,
-      passwordExpiryDays: policyData.passwordExpiryDays || 90,
-      passwordHistoryCount: policyData.passwordHistoryCount || 5,
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      createdBy: policyData.createdBy || 'admin'
-    };
-
-    policies.push(newPolicy);
-    this.storage.saveLocal('policies', policies);
-
-    return {
-      success: true,
-      policy: newPolicy
-    };
+    return result;
   }
 
-  /**
-   * Validate policy settings within allowed ranges
-   * @param {Object} policyData - Policy configuration to validate
-   * @returns {Object} Validation result
-   */
-  validatePolicySettings(policyData) {
+  _validatePolicySettings(p) {
     const errors = [];
-
-    // Validate minLength (4-32)
-    if (policyData.minLength < 4 || policyData.minLength > 32) {
-      errors.push('Minimum password length must be between 4 and 32 characters');
-    }
-
-    // Validate maxFailedAttempts (1-10)
-    if (policyData.maxFailedAttempts < 1 || policyData.maxFailedAttempts > 10) {
-      errors.push('Maximum failed attempts must be between 1 and 10');
-    }
-
-    // Validate lockoutDurationMinutes (1-1440)
-    if (policyData.lockoutDurationMinutes < 1 || policyData.lockoutDurationMinutes > 1440) {
-      errors.push('Lockout duration must be between 1 and 1440 minutes');
-    }
-
-    // Validate passwordExpiryDays (60-90) if provided
-    if (policyData.passwordExpiryDays && (policyData.passwordExpiryDays < 60 || policyData.passwordExpiryDays > 90)) {
-      errors.push('Password expiry period must be between 60 and 90 days');
-    }
-
-    // Validate passwordHistoryCount (5-10) if provided
-    if (policyData.passwordHistoryCount && (policyData.passwordHistoryCount < 5 || policyData.passwordHistoryCount > 10)) {
-      errors.push('Password history count must be between 5 and 10');
-    }
-
-    return {
-      valid: errors.length === 0,
-      errors: errors
-    };
+    if (p.minLength < 4 || p.minLength > 32) errors.push('Длина пароля: 4–32 символа');
+    if (p.maxFailedAttempts < 1 || p.maxFailedAttempts > 10) errors.push('Попыток входа: 1–10');
+    if (p.lockoutDurationMinutes < 1 || p.lockoutDurationMinutes > 1440) errors.push('Блокировка: 1–1440 минут');
+    if (p.passwordExpiryDays && (p.passwordExpiryDays < 60 || p.passwordExpiryDays > 90)) errors.push('Срок пароля: 60–90 дней');
+    if (p.passwordHistoryCount && (p.passwordHistoryCount < 5 || p.passwordHistoryCount > 10)) errors.push('История паролей: 5–10');
+    return { valid: errors.length === 0, errors };
   }
 
   /**
-   * Generate compliant password
-   * @returns {string} Generated password meeting all requirements
+   * Проверить, использовался ли пароль ранее
+   */
+  isPasswordInHistory(passwordHistory, passwordHash) {
+    if (!passwordHistory || !Array.isArray(passwordHistory)) return false;
+    return passwordHistory.includes(passwordHash);
+  }
+
+  /**
+   * Генерация пароля соответствующего политике
    */
   generatePassword() {
     const policy = this.getCurrentPolicy();
-    const length = Math.max(policy.minLength, 12); // At least 12 characters
-    
-    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
-    const numbers = '0123456789';
-    const special = '!@#$%^&*()_+-=[]{};\':"|,.<>/?';
-    
+    const length = Math.max(policy.minLength, 12);
+    const sets = {
+      upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+      lower: 'abcdefghijklmnopqrstuvwxyz',
+      nums:  '0123456789',
+      spec:  '!@#$%^&*()_+-=[]{};\':"|,.<>/?'
+    };
     let charset = '';
     let password = '';
-    
-    // Add required character types
-    if (policy.requireUppercase) {
-      charset += uppercase;
-      password += this.getRandomChar(uppercase);
-    }
-    
-    if (policy.requireLowercase) {
-      charset += lowercase;
-      password += this.getRandomChar(lowercase);
-    }
-    
-    if (policy.requireNumbers) {
-      charset += numbers;
-      password += this.getRandomChar(numbers);
-    }
-    
-    if (policy.requireSpecial) {
-      charset += special;
-      password += this.getRandomChar(special);
-    }
-    
-    // Fill remaining length with random characters from charset
-    for (let i = password.length; i < length; i++) {
-      password += this.getRandomChar(charset);
-    }
-    
-    // Shuffle password to randomize character positions
-    password = this.shuffleString(password);
-    
-    return password;
+    if (policy.requireUppercase) { charset += sets.upper; password += this._rndChar(sets.upper); }
+    if (policy.requireLowercase) { charset += sets.lower; password += this._rndChar(sets.lower); }
+    if (policy.requireNumbers)   { charset += sets.nums;  password += this._rndChar(sets.nums); }
+    if (policy.requireSpecial)   { charset += sets.spec;  password += this._rndChar(sets.spec); }
+    for (let i = password.length; i < length; i++) password += this._rndChar(charset);
+    return this._shuffle(password);
   }
 
-  /**
-   * Get random character from string using crypto API
-   * @param {string} str - String to pick from
-   * @returns {string} Random character
-   */
-  getRandomChar(str) {
-    const array = new Uint32Array(1);
-    crypto.getRandomValues(array);
-    return str[array[0] % str.length];
+  _rndChar(str) {
+    const a = new Uint32Array(1);
+    crypto.getRandomValues(a);
+    return str[a[0] % str.length];
   }
 
-  /**
-   * Shuffle string using Fisher-Yates algorithm
-   * @param {string} str - String to shuffle
-   * @returns {string} Shuffled string
-   */
-  shuffleString(str) {
+  _shuffle(str) {
     const arr = str.split('');
     for (let i = arr.length - 1; i > 0; i--) {
-      const array = new Uint32Array(1);
-      crypto.getRandomValues(array);
-      const j = array[0] % (i + 1);
+      const a = new Uint32Array(1);
+      crypto.getRandomValues(a);
+      const j = a[0] % (i + 1);
       [arr[i], arr[j]] = [arr[j], arr[i]];
     }
     return arr.join('');
   }
 
-  /**
-   * Check if password is in user's password history
-   * @param {string} username - Username
-   * @param {string} passwordHash - Password hash to check
-   * @returns {boolean} True if password in history
-   */
-  isPasswordInHistory(username, passwordHash) {
-    const users = this.storage.loadLocal('users') || [];
-    const user = users.find(u => u.username === username);
-    
-    if (!user || !user.passwordHistory) {
-      return false;
-    }
-    
-    return user.passwordHistory.includes(passwordHash);
-  }
-
-  /**
-   * Get policy history
-   * @returns {Array} Array of all policies
-   */
-  getPolicyHistory() {
-    return this.storage.loadLocal('policies') || [];
+  async getPolicyHistory() {
+    return await db_getAllPolicies();
   }
 }
 
-// Export singleton instance
-const policyEngine = new PolicyEngine(storageManager);
+const policyEngine = new PolicyEngine();

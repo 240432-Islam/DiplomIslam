@@ -1,161 +1,93 @@
 /**
  * Account Lockout Manager
- * Handles failed login attempts, account locking, and unlocking
+ * Блокировки хранятся в Supabase (поля failed_attempts, locked_until).
  */
 
 class LockoutManager {
-  constructor(storage, policyEngine) {
-    this.storage = storage;
-    this.policyEngine = policyEngine;
-  }
-
   /**
-   * Record failed login attempt
-   * @param {string} username - Username
-   * @returns {Object} Lockout status with attempt count and lock status
+   * Записать неудачную попытку входа
    */
-  recordFailedAttempt(username) {
-    const users = this.storage.loadLocal('users') || [];
-    const user = users.find(u => u.username === username);
+  async recordFailedAttempt(username) {
+    const user = await db_getUserByUsername(username);
+    if (!user) return { isLocked: false, failedAttempts: 0, maxAttempts: 0 };
 
-    if (!user) {
-      return {
-        isLocked: false,
-        failedAttempts: 0,
-        maxAttempts: 0
-      };
+    const policy = policyEngine.getCurrentPolicy();
+    const attempts = (user.failed_attempts || 0) + 1;
+    let lockedUntil = null;
+
+    if (attempts >= policy.maxFailedAttempts) {
+      lockedUntil = new Date(Date.now() + policy.lockoutDurationMinutes * 60 * 1000).toISOString();
     }
 
-    const policy = this.policyEngine.getCurrentPolicy();
-    user.failedAttempts = (user.failedAttempts || 0) + 1;
-
-    // Check if max attempts reached
-    if (user.failedAttempts >= policy.maxFailedAttempts) {
-      // Lock account
-      const lockoutDuration = policy.lockoutDurationMinutes * 60 * 1000; // Convert to milliseconds
-      user.lockedUntil = new Date(Date.now() + lockoutDuration).toISOString();
-    }
-
-    this.storage.saveLocal('users', users);
+    await db_updateUser(user.id, { failed_attempts: attempts, locked_until: lockedUntil });
 
     return {
-      isLocked: user.lockedUntil !== null,
-      failedAttempts: user.failedAttempts,
+      isLocked: lockedUntil !== null,
+      failedAttempts: attempts,
       maxAttempts: policy.maxFailedAttempts,
-      lockedUntil: user.lockedUntil
+      lockedUntil,
+      remainingMinutes: lockedUntil ? policy.lockoutDurationMinutes : 0
     };
   }
 
   /**
-   * Reset failed attempts on successful login
-   * @param {string} username - Username
-   * @returns {void}
+   * Сбросить счётчик после успешного входа
    */
-  resetFailedAttempts(username) {
-    const users = this.storage.loadLocal('users') || [];
-    const user = users.find(u => u.username === username);
-
+  async resetFailedAttempts(username) {
+    const user = await db_getUserByUsername(username);
     if (user) {
-      user.failedAttempts = 0;
-      user.lockedUntil = null;
-      this.storage.saveLocal('users', users);
+      await db_updateUser(user.id, { failed_attempts: 0, locked_until: null });
     }
   }
 
   /**
-   * Check if account is locked
-   * @param {string} username - Username
-   * @returns {Object} Lock status and remaining time
+   * Проверить, заблокирован ли аккаунт
    */
-  isAccountLocked(username) {
-    const users = this.storage.loadLocal('users') || [];
-    const user = users.find(u => u.username === username);
+  async isAccountLocked(username) {
+    const user = await db_getUserByUsername(username);
+    const policy = policyEngine.getCurrentPolicy();
 
     if (!user) {
-      return {
-        isLocked: false,
-        failedAttempts: 0,
-        maxAttempts: 0,
-        lockedUntil: null,
-        remainingMinutes: 0
-      };
+      return { isLocked: false, failedAttempts: 0, maxAttempts: policy.maxFailedAttempts, lockedUntil: null, remainingMinutes: 0 };
     }
 
-    // Check if lockout expired
-    if (user.lockedUntil) {
-      const lockoutTime = new Date(user.lockedUntil).getTime();
+    if (user.locked_until) {
+      const lockTime = new Date(user.locked_until).getTime();
       const now = Date.now();
 
-      if (now >= lockoutTime) {
-        // Lockout expired, auto-unlock
-        this.resetFailedAttempts(username);
-        return {
-          isLocked: false,
-          failedAttempts: 0,
-          maxAttempts: this.policyEngine.getCurrentPolicy().maxFailedAttempts,
-          lockedUntil: null,
-          remainingMinutes: 0
-        };
+      if (now >= lockTime) {
+        // Блокировка истекла — снимаем
+        await db_updateUser(user.id, { failed_attempts: 0, locked_until: null });
+        return { isLocked: false, failedAttempts: 0, maxAttempts: policy.maxFailedAttempts, lockedUntil: null, remainingMinutes: 0 };
       }
 
-      // Still locked
-      const remainingMs = lockoutTime - now;
-      const remainingMinutes = Math.ceil(remainingMs / (60 * 1000));
-
+      const remainingMinutes = Math.ceil((lockTime - now) / 60000);
       return {
         isLocked: true,
-        failedAttempts: user.failedAttempts,
-        maxAttempts: this.policyEngine.getCurrentPolicy().maxFailedAttempts,
-        lockedUntil: user.lockedUntil,
-        remainingMinutes: remainingMinutes
+        failedAttempts: user.failed_attempts,
+        maxAttempts: policy.maxFailedAttempts,
+        lockedUntil: user.locked_until,
+        remainingMinutes
       };
     }
 
     return {
       isLocked: false,
-      failedAttempts: user.failedAttempts || 0,
-      maxAttempts: this.policyEngine.getCurrentPolicy().maxFailedAttempts,
+      failedAttempts: user.failed_attempts || 0,
+      maxAttempts: policy.maxFailedAttempts,
       lockedUntil: null,
       remainingMinutes: 0
     };
   }
 
   /**
-   * Manually unlock account (admin only)
-   * @param {number} userId - User ID
-   * @returns {Object} Result with success flag
+   * Разблокировать аккаунт вручную (только admin)
    */
-  unlockAccount(userId) {
-    const users = this.storage.loadLocal('users') || [];
-    const user = users.find(u => u.id === userId);
-
-    if (!user) {
-      return {
-        success: false,
-        error: 'User not found'
-      };
-    }
-
-    user.failedAttempts = 0;
-    user.lockedUntil = null;
-    this.storage.saveLocal('users', users);
-
-    return {
-      success: true,
-      error: null
-    };
-  }
-
-  /**
-   * Check and auto-unlock expired lockouts
-   * @param {string} username - Username
-   * @returns {boolean} True if unlocked
-   */
-  checkLockoutExpiration(username) {
-    const lockoutInfo = this.isAccountLocked(username);
-    return !lockoutInfo.isLocked;
+  async unlockAccount(userId) {
+    const result = await db_updateUser(userId, { failed_attempts: 0, locked_until: null });
+    if (!result.success) return { success: false, error: result.error };
+    return { success: true, error: null };
   }
 }
 
-// Export singleton instance
-const lockoutManager = new LockoutManager(storageManager, policyEngine);
+const lockoutManager = new LockoutManager();
